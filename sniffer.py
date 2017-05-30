@@ -141,11 +141,9 @@ class FollowView(Frame):
                                        hover_focus=True,
                                        title="Bluetooth Low Energy Sniffer - Following Device {}"
                                          .format(get_Address(device.address) if device != None else ""))
-        # Save off the model that accesses the contacts database.
+
         self._device = device
         self._client = client
-
-        # Create the form for displaying the list of contacts
 
         self._client_info_view = MultiColumnListBox(
             Widget.FILL_FRAME,
