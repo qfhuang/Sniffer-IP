@@ -1,0 +1,33 @@
+import os
+import logging
+from functools import reduce
+
+from pythonjsonlogger import jsonlogger
+
+from Project.config import *
+
+
+class ServiceFilter(logging.Filter):
+    def __init__(self, client):
+        super().__init__()
+        self.client = client
+
+    def filter(self, record):
+        record.client = self.client.to_JSON()
+        return True
+
+def initialize_service_logging(client):
+    log_file = os.path.join("Logs", SERVICE_LOG_FILE_NAME)
+    logger = logging.getLogger(SERVICE_LOGGER)
+    logger.addFilter(ServiceFilter(client))
+    logger.setLevel(SERVICE_LOG_LEVEL)
+    handler = logging.handlers.TimedRotatingFileHandler(log_file,
+                                       when=SERVICE_LOG_FILE_TIME_BASE,
+                                       interval=1,
+                                       backupCount=SERVICE_CLEAN_UP_INTERVAL,
+                                       utc=True)
+    format_str = '%(message)%(levelname)%(name)%(asctime)%(client)'
+    formatter = jsonlogger.JsonFormatter(format_str, '%Y-%m-%dT%H:%M:%S')
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+

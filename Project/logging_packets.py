@@ -8,15 +8,15 @@ import arrow
 from Project.shared import get_direction, get_Address
 from Project.config import *
 
-def initialize_logging_to_Filebeat():
-    log_file = os.path.join("Logs", LOG_FILE_NAME)
+def initialize_packets_logging_to_Filebeat():
+    log_file = os.path.join("Logs", PACKETS_LOG_FILE_NAME)
     logger = logging.getLogger(BLE_PACKETS_LOGGER)
-    logger.setLevel(LOG_LEVEL)
+    logger.setLevel(PACKETS_LOG_LEVEL)
     logger.propagate = False
     handler = logging.handlers.TimedRotatingFileHandler(log_file,
-                                       when=LOG_FILE_TIME_BASE,
+                                       when=PACKETS_LOG_FILE_TIME_BASE,
                                        interval=1,
-                                       backupCount=CLEAN_UP_INTERVAL,
+                                       backupCount=PACKETS_CLEAN_UP_INTERVAL,
                                        utc=True)
     logger.addHandler(handler)
 

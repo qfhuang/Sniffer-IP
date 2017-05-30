@@ -1,4 +1,7 @@
 
+class CloseSnifferException(Exception):
+    pass
+
 def get_direction(value):
     return "Master to Slave" if value else "Slave to Master"
 

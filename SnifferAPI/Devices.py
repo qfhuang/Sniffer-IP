@@ -117,12 +117,12 @@ class DeviceList(Notifications.Notifier):
 
 
 class Device:
-    def __init__(self, address, name, RSSI, txAdd = 1):
+    def __init__(self, address, name, RSSI, txAdd = 1, selected=False):
         self.address = address
         self.txAdd = txAdd
         self.name = name
         self.RSSI = RSSI
-        # self.selected = selected
+        self.selected = selected
         self.followed = False
     
     def __repr__(self):
