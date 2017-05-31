@@ -13,7 +13,7 @@ import logging.handlers as logHandlers
 
 try:
     logFilePath=os.path.join(os.getenv('appdata'), 'Nordic Semiconductor', 'Sniffer', 'logs')
-except AttributeError:
+except:
     logFilePath="logs"
 
 logFileName = os.path.join(logFilePath, 'log.txt')
