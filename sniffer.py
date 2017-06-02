@@ -204,6 +204,7 @@ def setup(delay=6):
     # Try to open the serial port, here we start logging
 
     # Initialize the device without specified serial port
+    logger.info(list_ports.grep(config.SNIFFER_PORT_KEYWORD_SEARCH))
     for port in list_ports.grep(config.SNIFFER_PORT_KEYWORD_SEARCH):
         try:
             #TODO: This is hack, should have proper automatic port discovery
