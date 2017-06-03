@@ -2,6 +2,7 @@ import sys
 import time
 import logging
 from threading import Thread
+from apscheduler.schedulers.background import BackgroundScheduler
 
 from asciimatics.exceptions import NextScene, StopApplication, ResizeScreenError
 from asciimatics.scene import Scene
@@ -15,7 +16,7 @@ from SnifferAPI import Sniffer
 
 from Project import config
 from Project.client import Client
-from Project.shared import get_Address
+from Project.shared import get_Address, ReloadSniffer
 from Project.shared import CloseSnifferException
 from Project.logging_packets import initialize_packets_logging_to_Filebeat
 from Project.logging_service import initialize_service_logging
@@ -25,7 +26,7 @@ client = None
 logger = logging.getLogger(config.SERVICE_LOGGER)
 
 
-class MainView(Frame, Thread):
+class MainView(Frame):
     def __init__(self, screen, client):
         super(MainView, self).__init__(screen,
                                        screen.height * 2 // 3,
@@ -34,7 +35,7 @@ class MainView(Frame, Thread):
                                        hover_focus=True,
                                        title="Bluetooth Low Energy Sniffer",
                                        reduce_cpu=True)
-        Thread.__init__(self)
+        #Thread.__init__(self)
         # Save off the model that accesses the contacts database.
         self._client = client
         self._frame_num = 0
@@ -75,7 +76,9 @@ class MainView(Frame, Thread):
         self.fix()
         self._on_pick()
 
-        self.start()
+        self.sched = BackgroundScheduler(daemon=True)
+        self.sched.start()
+        self.sched.add_job(self.run, 'interval', seconds=config.UPDATE_SCREEN_INTERVAL)
 
     def _on_pick(self):
         self._follow_button.disabled = self._list_view.value is None
@@ -111,14 +114,15 @@ class MainView(Frame, Thread):
         self._client_info_view.options = self._get_client_info()
 
     def run(self):
-        mySniffer.scan()
-        while True:
+        if mySniffer is None or self._client.port is None:
+            raise StopApplication
 
-            time.sleep(config.UPDATE_SCREEN_INTERVAL)
-            self._devices = mySniffer.getDevices().asList()
-            self.update_client_info()
-            self.reload_devices()
-            self._info_layout.update_widgets()
+        mySniffer.scan()
+        time.sleep(config.UPDATE_SCREEN_INTERVAL)
+        self._devices = mySniffer.getDevices().asList()
+        self.update_client_info()
+        self.reload_devices()
+        self._info_layout.update_widgets()
 
     def _quit(self):
         self._scene.add_effect(
@@ -285,44 +289,6 @@ def dumpPackets():
     else:
         print ('.' * len(packets))
 
-def main():
-    """Main program execution point"""
-
-    # Scan for devices in range until the user makes a selection
-    try:
-        d = None
-        while d is None:
-            print("Scanning for BLE devices (5s) ...")
-            devlist = scanForDevices()
-            if len(devlist):
-                # Select a device
-                d = selectDevice(devlist)
-
-        # Start sniffing the selected device
-        print("Attempting to follow device {0}:{1}:{2}:{3}:{4}:{5}".format("%02X" % d.address[0],
-                                                                           "%02X" % d.address[1],
-                                                                           "%02X" % d.address[2],
-                                                                           "%02X" % d.address[3],
-                                                                           "%02X" % d.address[4],
-                                                                           "%02X" % d.address[5]))
-        # Make sure we actually followed the selected device (i.e. it's still available, etc.)
-        if d is not None:
-            mySniffer.follow(d)
-        else:
-            print("ERROR: Could not find the selected device")
-
-        # Dump packets
-        while True:
-            dumpPackets()
-            time.sleep(1)
-
-    except (KeyboardInterrupt, ValueError, IndexError) as e:
-        # Close gracefully on CTRL+C
-        if 'KeyboardInterrupt' not in str(type(e)):
-            print("Caught exception:", e)
-        mySniffer.doExit()
-        sys.exit(-1)
-
 def demo(screen, scene):
     global client
     main_scene = MainView(screen, client)
@@ -334,29 +300,49 @@ def demo(screen, scene):
 
 last_scene = None
 
-if __name__ == '__main__':
 
+def main(sleep_before_run=None):
     logger = logging.getLogger(config.SERVICE_LOGGER)
     last_scene = None
+    if sleep_before_run:
+        time.sleep(sleep_before_run)
+        logger.warning("Trying to restart a service after unexpected error")
     setup(6)
     while True:
 
         try:
-            Screen.wrapper(demo, catch_interrupt=True, arguments=[last_scene])
-            mySniffer.doExit()
+            screen_wrap = Screen.wrapper(demo, catch_interrupt=True, arguments=[last_scene])
+            screen_wrap.refresh()
+            if mySniffer: mySniffer.doExit()
             sys.exit(-1)
         except ResizeScreenError as e:
             last_scene = e.scene
+        except ReloadSniffer:
+            logger.warning("Reloading Sniffer")
+            if mySniffer: mySniffer.doExit()
+            main(5)
+        except SerialException as e:
+            logger.exception("exc_info", exc_info=True)
+            if mySniffer: mySniffer.doExit()
+            main(10)
         except CloseSnifferException:
             logger.info("Service has been closed")
-            mySniffer.doExit()
+            if mySniffer: mySniffer.doExit()
+            time.sleep(1)
             sys.exit(-1)
-        except StopApplication:
-            logger.info("Service has been closed")
-            mySniffer.doExit()
-            sys.exit(-1)
+        #except StopApplication:
+        #    logger.info("Service has been closed")
+        #    if mySniffer: mySniffer.doExit()
+        #    time.sleep(1)
+        #    sys.exit(-1)
         except Exception as e:
             logger.exception("exc_info", exc_info=True)
+            if mySniffer: mySniffer.doExit()
+            time.sleep(1)
+            sys.exit(-1)
+
+if __name__ == '__main__':
+    main()
 
 
 

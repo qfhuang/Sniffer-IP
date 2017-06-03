@@ -3,3 +3,4 @@ asciimatics==1.8.0
 pyserial==3.3
 python-json-logger==0.1.7
 requests==2.14.2
+apscheduler
