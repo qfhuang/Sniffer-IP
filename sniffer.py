@@ -1,7 +1,10 @@
+import datetime
 import sys
 import time
 import logging
 from threading import Thread
+
+import serial
 from apscheduler.schedulers.background import BackgroundScheduler
 
 from asciimatics.exceptions import NextScene, StopApplication, ResizeScreenError
@@ -114,15 +117,21 @@ class MainView(Frame):
         self._client_info_view.options = self._get_client_info()
 
     def run(self):
-        if mySniffer is None or self._client.port is None:
-            raise StopApplication
+        logger = logging.getLogger(config.SERVICE_LOGGER)
+        try:
+            if mySniffer is None or self._client.port is None:
+                setup(6)
 
-        mySniffer.scan()
-        time.sleep(config.UPDATE_SCREEN_INTERVAL)
-        self._devices = mySniffer.getDevices().asList()
-        self.update_client_info()
-        self.reload_devices()
-        self._info_layout.update_widgets()
+            mySniffer.scan()
+            time.sleep(config.UPDATE_SCREEN_INTERVAL-1)
+            self._devices = mySniffer.getDevices().asList()
+            self.update_client_info()
+            self.reload_devices()
+            self._info_layout.update_widgets()
+        except Exception as e:
+            logger.exception("exc_info", exc_info=True)
+            if mySniffer: mySniffer.doExit()
+            self._client = Client()
 
     def _quit(self):
         self._scene.add_effect(
@@ -158,13 +167,11 @@ class FollowView(Frame):
             on_change=self._get_client_info()
         )
 
-        self._follow_button = Button("Follow", self._back)
         layout = Layout([100], fill_frame=True)
         self.add_layout(layout)
         layout.add_widget(Divider())
         layout2 = Layout([1, 1])
         self.add_layout(layout2)
-        layout2.add_widget(self._follow_button, 0)
         layout2.add_widget(Button("Quit", self._quit_confirm), 0)
         layout2.add_widget(Button("Back", self._quit_confirm), 1)
         self.fix()
@@ -187,19 +194,15 @@ class FollowView(Frame):
 
 
 def setup(delay=6):
-    # Display the libpcap logfile location
-
     global mySniffer
     global client
 
-    client = Client()
-
     initialize_service_logging(client=client)
-    logging.getLogger(config.SERVICE_LOGGER)
+    logger = logging.getLogger(config.SERVICE_LOGGER)
     logger.info("Starting service")
 
     if config.SAVE_TO_PCAP:
-        logging.info("Capturing data to " + CaptureFiles.captureFilePath)
+        logger.info("Capturing data to " + CaptureFiles.captureFilePath)
 
     if config.SAVE_TO_FILEBEAT:
         initialize_packets_logging_to_Filebeat()
@@ -208,11 +211,9 @@ def setup(delay=6):
     # Try to open the serial port, here we start logging
 
     # Initialize the device without specified serial port
-    logger.info(list(list_ports.grep(config.SNIFFER_PORT_KEYWORD_SEARCH)))
     for port in list_ports.grep(config.SNIFFER_PORT_KEYWORD_SEARCH):
         try:
             #TODO: This is hack, should have proper automatic port discovery
-            logger.info(port.device)
             mySniffer = Sniffer.Sniffer(port.device)
             mySniffer.start()
             time.sleep(delay)
@@ -225,69 +226,9 @@ def setup(delay=6):
             logger.exception("exc_info", exc_info=True)
             raise CloseSnifferException
         else:
-            client.add_sniffer(mySniffer)
+            client.update_client_with_sniffer(mySniffer)
             logger.info("Service successfully started")
             break
-
-def scanForDevices(scantime=5):
-    mySniffer.scan()
-    time.sleep(scantime)
-    devs = mySniffer.getDevices().asList()
-    return devs
-
-
-def selectDevice(devlist):
-    """
-    Attempts to select a specific Device from the supplied DeviceList
-    """
-    count = 0
-
-    if len(devlist):
-        print ("Found {0} BLE devices:\n".format(str(len(devlist))))
-        # Display a list of devices, sorting them by index number
-        for d in devlist.asList():
-            """@type : Device"""
-            count += 1
-            print ("  [{0}] {1} ({2}:{3}:{4}:{5}:{6}:{7}, RSSI = {8})".format(count, d.name,
-                                                                             "%02X" % d.address[0],
-                                                                             "%02X" % d.address[1],
-                                                                             "%02X" % d.address[2],
-                                                                             "%02X" % d.address[3],
-                                                                             "%02X" % d.address[4],
-                                                                             "%02X" % d.address[5],
-                                                                             d.RSSI))
-        try:
-            i = int(input("\nSelect a device to sniff, or '0' to scan again\n> "))
-        except KeyboardInterrupt:
-            raise KeyboardInterrupt
-
-        except:
-            return None
-
-        # Select a device or scan again, depending on the input
-        if (i > 0) and (i <= count):
-            # Select the indicated device
-            return devlist.find(i - 1)
-        else:
-            # This will start a new scan
-            return None
-
-
-def dumpPackets():
-    """Dumps incoming packets to the display"""
-    # Get (pop) unprocessed BLE packets.
-    packets = mySniffer.getPackets()
-    # Display the packets on the screen in verbose mode
-    if args.verbose:
-        for packet in packets:
-            if packet.blePacket is not None:
-                # Display the raw BLE packet payload
-                # Note: 'BlePacket' is nested inside the higher level 'Packet' wrapper class
-                print (packet.blePacket.payload)
-            else:
-                print (packet)
-    else:
-        print ('.' * len(packets))
 
 def demo(screen, scene):
     global client
@@ -301,13 +242,10 @@ def demo(screen, scene):
 last_scene = None
 
 
-def main(sleep_before_run=None):
-    logger = logging.getLogger(config.SERVICE_LOGGER)
+def main():
+    global client
+    client = Client()
     last_scene = None
-    if sleep_before_run:
-        time.sleep(sleep_before_run)
-        logger.warning("Trying to restart a service after unexpected error")
-    setup(6)
     while True:
 
         try:
@@ -320,15 +258,9 @@ def main(sleep_before_run=None):
         except ReloadSniffer:
             logger.warning("Reloading Sniffer")
             if mySniffer: mySniffer.doExit()
-            main(5)
-        except SerialException as e:
-            logger.exception("exc_info", exc_info=True)
-            if mySniffer: mySniffer.doExit()
-            main(10)
         except CloseSnifferException:
             logger.info("Service has been closed")
             if mySniffer: mySniffer.doExit()
-            time.sleep(1)
             sys.exit(-1)
         #except StopApplication:
         #    logger.info("Service has been closed")
@@ -338,7 +270,6 @@ def main(sleep_before_run=None):
         except Exception as e:
             logger.exception("exc_info", exc_info=True)
             if mySniffer: mySniffer.doExit()
-            time.sleep(1)
             sys.exit(-1)
 
 if __name__ == '__main__':

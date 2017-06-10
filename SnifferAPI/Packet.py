@@ -98,6 +98,7 @@ class PacketReader(Notifications.Notifier):
     
     def doExit(self):
         self.exit = True
+        self.uart.ser.flush()
         self.uart.ser.close()
 
     # This function takes a byte list, encode it in SLIP protocol and return the encoded byte list
