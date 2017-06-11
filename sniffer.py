@@ -138,10 +138,11 @@ class MainView(Frame, Thread):
                 self._info_layout.update_widgets()
                 self._screen.force_update()
             except Exception as e:
+                time.sleep(5)
                 logger.exception("Background Service Exception", exc_info=True)
                 if mySniffer: mySniffer.doExit()
+                time.sleep(10)
                 self._client = Client()
-                time.sleep(15)
                 mySniffer = None
 
 
