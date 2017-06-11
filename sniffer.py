@@ -78,6 +78,7 @@ class MainView(Frame, Thread):
         self._button_layout.add_widget(self._follow_button, 0)
         self._button_layout.add_widget(Button("Quit", self._quit), 1)
 
+
         self.start()
 
         self.fix()
@@ -137,11 +138,12 @@ class MainView(Frame, Thread):
                 self._info_layout.update_widgets()
                 self._screen.force_update()
             except Exception as e:
-                logger.exception("exc_info", exc_info=True)
+                logger.exception("Background Service Exception", exc_info=True)
                 if mySniffer: mySniffer.doExit()
                 self._client = Client()
                 time.sleep(15)
                 mySniffer = None
+
 
     def _quit(self):
         self._scene.add_effect(
@@ -266,17 +268,8 @@ def demo(screen, scene):
 def main():
     global client, last_scene
     client = Client()
-    #screen = Screen.open()
-    #main_scene = MainView(screen, client)
-    #scenes = [
-    #    Scene([main_scene], -1, name="Main"),
-    #    Scene([FollowView(screen, client, None)], -1, name="Follow Device")
-    #]
-    #last_scene = None
     while True:
-
         try:
-
             Screen.wrapper(demo, catch_interrupt=True, arguments=[last_scene])
             if mySniffer: mySniffer.doExit()
             sys.exit(-1)
@@ -286,17 +279,11 @@ def main():
             logger.warning("Reloading Sniffer")
             if mySniffer: mySniffer.doExit()
         except CloseSnifferException:
-            logger.info("Service has been closed")
+            logger.info("Service has been closed (CloseSnifferException)")
             if mySniffer: mySniffer.doExit()
             sys.exit(-1)
-        #except StopApplication:
-        #    logger.info("Service has been closed")
-        #    if mySniffer: mySniffer.doExit()
-        #    time.sleep(1)
-        #    sys.exit(-1)
         except Exception as e:
-            #screen.close()
-            logger.exception("exc_info", exc_info=True)
+            logger.exception("Service has been closed (Unknown Exception)", exc_info=True)
             if mySniffer: mySniffer.doExit()
             sys.exit(-1)
 
