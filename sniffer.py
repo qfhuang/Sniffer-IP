@@ -141,7 +141,7 @@ class MainView(Frame, Thread):
                 time.sleep(5)
                 logger.exception("Background Service Exception", exc_info=True)
                 if mySniffer: mySniffer.doExit()
-                time.sleep(10)
+                time.sleep(11)
                 self._client = Client()
                 mySniffer = None
 
