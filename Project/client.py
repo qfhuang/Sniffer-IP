@@ -20,12 +20,11 @@ class Client():
         data  = self.__dict__.copy()
         return data
 
-    def add_sniffer(self, sniffer):
+    def update_client_with_sniffer(self, sniffer):
         self.firmware_version = sniffer.fwversion
         self.port = str(sniffer.portnum)
         self.missed_packets = sniffer.missedPackets
         return self
-
 
     def get_connection_information(self):
         testIP = "8.8.8.8"

@@ -29,7 +29,7 @@ client = None
 logger = logging.getLogger(config.SERVICE_LOGGER)
 
 
-class MainView(Frame):
+class MainView(Frame, Thread):
     def __init__(self, screen, client):
         super(MainView, self).__init__(screen,
                                        screen.height * 2 // 3,
@@ -38,12 +38,14 @@ class MainView(Frame):
                                        hover_focus=True,
                                        title="Bluetooth Low Energy Sniffer",
                                        reduce_cpu=True)
-        #Thread.__init__(self)
+        Thread.__init__(self)
         # Save off the model that accesses the contacts database.
         self._client = client
+        self._screen = screen
         self._frame_num = 0
         self._devices = []
         self.daemon = True
+        self.name = "scanning"
 
         # Create the form for displaying the list of contacts.
         self._list_view = ListBox(
@@ -76,12 +78,14 @@ class MainView(Frame):
         self._button_layout.add_widget(self._follow_button, 0)
         self._button_layout.add_widget(Button("Quit", self._quit), 1)
 
+        self.start()
+
         self.fix()
         self._on_pick()
 
-        self.sched = BackgroundScheduler(daemon=True)
-        self.sched.start()
-        self.sched.add_job(self.run, 'interval', seconds=config.UPDATE_SCREEN_INTERVAL)
+        #self.sched = BackgroundScheduler(daemon=True)
+        #self.sched.start()
+        #self.sched.add_job(self.run, 'interval', seconds=config.UPDATE_SCREEN_INTERVAL, max_instances=1)
 
     def _on_pick(self):
         self._follow_button.disabled = self._list_view.value is None
@@ -117,21 +121,27 @@ class MainView(Frame):
         self._client_info_view.options = self._get_client_info()
 
     def run(self):
+        global mySniffer
         logger = logging.getLogger(config.SERVICE_LOGGER)
-        try:
-            if mySniffer is None or self._client.port is None:
-                setup(6)
+        while 1:
+            starttime = time.time()
+            try:
+                if mySniffer is None or self._client.port is None:
+                    setup(6)
 
-            mySniffer.scan()
-            time.sleep(config.UPDATE_SCREEN_INTERVAL-1)
-            self._devices = mySniffer.getDevices().asList()
-            self.update_client_info()
-            self.reload_devices()
-            self._info_layout.update_widgets()
-        except Exception as e:
-            logger.exception("exc_info", exc_info=True)
-            if mySniffer: mySniffer.doExit()
-            self._client = Client()
+                mySniffer.scan()
+                time.sleep(config.UPDATE_SCREEN_INTERVAL - ((time.time() - starttime) % config.UPDATE_SCREEN_INTERVAL))
+                self._devices = mySniffer.getDevices().asList()
+                self.update_client_info()
+                self.reload_devices()
+                self._info_layout.update_widgets()
+                self._screen.force_update()
+            except Exception as e:
+                logger.exception("exc_info", exc_info=True)
+                if mySniffer: mySniffer.doExit()
+                self._client = Client()
+                time.sleep(15)
+                mySniffer = None
 
     def _quit(self):
         self._scene.add_effect(
@@ -199,7 +209,7 @@ def setup(delay=6):
 
     initialize_service_logging(client=client)
     logger = logging.getLogger(config.SERVICE_LOGGER)
-    logger.info("Starting service")
+    logger.info("Trying to start a service")
 
     if config.SAVE_TO_PCAP:
         logger.info("Capturing data to " + CaptureFiles.captureFilePath)
@@ -230,6 +240,8 @@ def setup(delay=6):
             logger.info("Service successfully started")
             break
 
+last_scene = None
+
 def demo(screen, scene):
     global client
     main_scene = MainView(screen, client)
@@ -237,20 +249,35 @@ def demo(screen, scene):
         Scene([main_scene], -1, name="Main"),
         Scene([FollowView(screen, client, None)], -1, name="Follow Device")
     ]
-    screen.play(scenes, stop_on_resize=True, start_scene=scene)
 
-last_scene = None
+    screen.set_scenes(scenes)
+
+    while True:
+        screen.draw_next_frame(repeat=True)
+        time.sleep(0.05)
+
+
+    #screen.play(scenes, stop_on_resize=True, start_scene=scene)
+
+
+
 
 
 def main():
-    global client
+    global client, last_scene
     client = Client()
-    last_scene = None
+    #screen = Screen.open()
+    #main_scene = MainView(screen, client)
+    #scenes = [
+    #    Scene([main_scene], -1, name="Main"),
+    #    Scene([FollowView(screen, client, None)], -1, name="Follow Device")
+    #]
+    #last_scene = None
     while True:
 
         try:
-            screen_wrap = Screen.wrapper(demo, catch_interrupt=True, arguments=[last_scene])
-            screen_wrap.refresh()
+
+            Screen.wrapper(demo, catch_interrupt=True, arguments=[last_scene])
             if mySniffer: mySniffer.doExit()
             sys.exit(-1)
         except ResizeScreenError as e:
@@ -268,6 +295,7 @@ def main():
         #    time.sleep(1)
         #    sys.exit(-1)
         except Exception as e:
+            #screen.close()
             logger.exception("exc_info", exc_info=True)
             if mySniffer: mySniffer.doExit()
             sys.exit(-1)
