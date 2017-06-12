@@ -31,3 +31,13 @@ def initialize_service_logging(client):
     handler.setFormatter(formatter)
     logger.addHandler(handler)
 
+def initialize_scheduler_logging():
+    log_file = os.path.join("Logs", SCHEDULER_LOG_FILE_NAME)
+    logger = logging.getLogger(SCHEDULER_LOGGER)
+    logger.propagate = False
+    handler = logging.handlers.TimedRotatingFileHandler(log_file,
+                                                        when=SCHEDULER_LOG_FILE_TIME_BASE,
+                                                        interval=1,
+                                                        backupCount=SCHEDULER_LOG_CLEAN_UP_INTERVAL,
+                                                        utc=True)
+    logger.addHandler(handler)

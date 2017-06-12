@@ -18,12 +18,13 @@ from Project.client import Client
 from Project.shared import get_Address
 from Project.shared import CloseSnifferException
 from Project.logging_packets import initialize_packets_logging_to_Filebeat
-from Project.logging_service import initialize_service_logging
+from Project.logging_service import initialize_service_logging, initialize_scheduler_logging
 
 mySniffer = None
 client = None
 logger = logging.getLogger(config.SERVICE_LOGGER)
 
+initialize_scheduler_logging()
 
 class MainView(Frame):
     def __init__(self, screen, client):
@@ -78,7 +79,7 @@ class MainView(Frame):
         self.fix()
         self._on_pick()
 
-        self.sched = BackgroundScheduler(daemon=True)
+        self.sched = BackgroundScheduler(daemon=True, logger=logging.getLogger(config.SCHEDULER_LOGGER))
         self.sched.start()
         self.sched.add_job(self.run, 'interval', seconds=config.UPDATE_SCREEN_INTERVAL, max_instances=1, id="scanning")
 
