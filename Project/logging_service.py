@@ -20,6 +20,7 @@ def initialize_service_logging(client):
     log_file = os.path.join("Logs", SERVICE_LOG_FILE_NAME)
     logger = logging.getLogger(SERVICE_LOGGER)
     logger.addFilter(ServiceFilter(client))
+    logger.propagate = False
     logger.setLevel(SERVICE_LOG_LEVEL)
     handler = logging.handlers.TimedRotatingFileHandler(log_file,
                                        when=SERVICE_LOG_FILE_TIME_BASE,
