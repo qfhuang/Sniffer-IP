@@ -27,7 +27,6 @@ last_scene = None
 logger = logging.getLogger(config.SERVICE_LOGGER)
 queue = Queue()
 initialize_scheduler_logging()
-
 logging.getLogger().setLevel(logging.CRITICAL)
 
 class MainView(Frame):

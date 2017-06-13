@@ -5,7 +5,7 @@ import threading
 from serial import SerialException
 
 from Project.config import SAVE_TO_PCAP, SAVE_TO_FILEBEAT, BLE_PACKETS_LOGGER
-from Project.logging_packets import BLEPacket
+from Project.models import BLEPacket
 from . import CaptureFiles, Devices, Exceptions, Notifications, Packet, Version
 
 REQ_FOLLOW = 0x00
