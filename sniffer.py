@@ -17,9 +17,8 @@ from SnifferAPI import Sniffer
 from Project import config
 from Project.client import Client
 from Project.shared import get_Address
-from Project.shared import CloseSnifferException
-from Project.logging_packets import initialize_packets_logging_to_Filebeat
-from Project.logging_service import initialize_service_logging, initialize_scheduler_logging
+from Project.logging_service import initialize_service_logging, initialize_scheduler_logging, \
+    initialize_packets_logging_to_Filebeat
 
 mySniffer = None
 followed_device = None
@@ -28,6 +27,8 @@ last_scene = None
 logger = logging.getLogger(config.SERVICE_LOGGER)
 queue = Queue()
 initialize_scheduler_logging()
+
+logging.getLogger().setLevel(logging.CRITICAL)
 
 class MainView(Frame):
     def __init__(self, screen):
@@ -120,7 +121,6 @@ class MainView(Frame):
     def run(self):
         global mySniffer, client, queue
         logger = logging.getLogger(config.SERVICE_LOGGER)
-        logger.info(self.sched.print_jobs())
         starttime = time.time()
         try:
             if mySniffer == None or client.port == None:

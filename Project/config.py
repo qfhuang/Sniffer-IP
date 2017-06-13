@@ -1,7 +1,7 @@
 from logging import INFO
 
 SW_VERSION = "1.0-beta"
-SNIFFER_PORT_KEYWORD_SEARCH = ""
+SNIFFER_PORT_KEYWORD_SEARCH = "Serial Port"
 
 SAVE_TO_PCAP = False
 SAVE_TO_FILEBEAT = True
