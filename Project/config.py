@@ -1,12 +1,12 @@
 from logging import INFO
 
 SW_VERSION = "1.0-beta"
-SNIFFER_PORT_KEYWORD_SEARCH = "Serial Port"
+SNIFFER_PORT_KEYWORD_SEARCH = ""
 
 SAVE_TO_PCAP = False
 SAVE_TO_FILEBEAT = True
 
-SETUP_DELAY = 3 #in sec
+SETUP_DELAY = 6 #in sec
 
 #Logging Packets Settings
 BLE_PACKETS_LOGGER = 'BLE Packets Log'
