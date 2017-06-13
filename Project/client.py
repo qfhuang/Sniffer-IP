@@ -1,5 +1,6 @@
-import json
 import socket
+
+from asciimatics.widgets import MultiColumnListBox, Widget
 
 from Project.config import SW_VERSION
 from arrow import utcnow
@@ -33,3 +34,21 @@ class Client():
         ipaddr = s.getsockname()[0]
         host = socket.gethostname()
         return ipaddr, host
+
+    def get_client_info(self):
+        client_options = []
+        items = 0
+        for client_info_key, client_info_value in self.__dict__.items():
+            items += 1
+            client_options.append(([client_info_key, str(client_info_value)], items))
+        return client_options
+
+    def get_client_widget(self):
+        return (
+        MultiColumnListBox(
+            Widget.FILL_FRAME,
+            columns=["<50%", "<50%"],
+            label=None,
+            name="client_info_view",
+            options=self.get_client_info(),
+        ))

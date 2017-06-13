@@ -6,6 +6,7 @@ SNIFFER_PORT_KEYWORD_SEARCH = "Serial Port"
 SAVE_TO_PCAP = False
 SAVE_TO_FILEBEAT = True
 
+SETUP_DELAY = 3 #in sec
 
 #Logging Packets Settings
 BLE_PACKETS_LOGGER = 'BLE Packets Log'
@@ -21,11 +22,13 @@ SERVICE_LOG_LEVEL = INFO
 SERVICE_LOG_FILE_TIME_BASE = 'midnight'
 SERVICE_CLEAN_UP_INTERVAL = 30 #log clean up interval in days
 
+#Logging Scheduler Settings
 SCHEDULER_LOGGER = "Scheduler Log"
 SCHEDULER_LOG_FILE_NAME = "scheduler.log"
 SCHEDULER_LOG_LEVEL = INFO
 SCHEDULER_LOG_FILE_TIME_BASE = 'midnight'
 SCHEDULER_LOG_CLEAN_UP_INTERVAL = 1 #log clean up interval in days
+
 #UI
 UPDATE_SCREEN_INTERVAL = 6 #in sec
 SCAN_DEVICES_INTERVAL = 8 #in sec

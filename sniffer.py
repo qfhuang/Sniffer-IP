@@ -1,12 +1,13 @@
 import sys
 import time
 import logging
+from queue import Queue
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from asciimatics.exceptions import NextScene, StopApplication, ResizeScreenError
 from asciimatics.scene import Scene
 from asciimatics.screen import Screen
-from asciimatics.widgets import Frame, ListBox, Button, Layout, Divider, Widget, MultiColumnListBox, PopUpDialog
+from asciimatics.widgets import Frame, ListBox, Button, Layout, Divider, Widget, PopUpDialog
 from serial.serialutil import SerialException
 from serial.tools import list_ports
 
@@ -21,13 +22,15 @@ from Project.logging_packets import initialize_packets_logging_to_Filebeat
 from Project.logging_service import initialize_service_logging, initialize_scheduler_logging
 
 mySniffer = None
+followed_device = None
 client = None
+last_scene = None
 logger = logging.getLogger(config.SERVICE_LOGGER)
-
+queue = Queue()
 initialize_scheduler_logging()
 
 class MainView(Frame):
-    def __init__(self, screen, client):
+    def __init__(self, screen):
         super(MainView, self).__init__(screen,
                                        screen.height * 2 // 3,
                                        screen.width * 2 // 3,
@@ -35,11 +38,10 @@ class MainView(Frame):
                                        hover_focus=True,
                                        title="Bluetooth Low Energy Sniffer",
                                        reduce_cpu=True)
-
-        self._client = client
         self._screen = screen
         self._frame_num = 0
         self._devices = []
+        self.logger = logging.getLogger(config.SERVICE_LOGGER)
 
         # Create the form for displaying the list of found devices.
         self._list_view = ListBox(
@@ -50,13 +52,8 @@ class MainView(Frame):
         )
 
         # Create the form for displaying the list of client information.
-        self._client_info_view = MultiColumnListBox(
-            Widget.FILL_FRAME,
-            columns=["<50%", "<50%"],
-            label=None,
-            name="client_info_view",
-            options=self._get_client_info(),
-        )
+        global client
+        self._client_info_view = client.get_client_widget()
 
         self._info_layout = Layout([100, 100], fill_frame=True)
         self.add_layout(self._info_layout)
@@ -80,15 +77,25 @@ class MainView(Frame):
         self._on_pick()
 
         self.sched = BackgroundScheduler(daemon=True, logger=logging.getLogger(config.SCHEDULER_LOGGER))
-        self.sched.start()
+
+    def start_service(self):
+        if not self.sched.running:
+            self.sched.start()
         self.sched.add_job(self.run, 'interval', seconds=config.UPDATE_SCREEN_INTERVAL, max_instances=1, id="scanning")
+        self.logger.info("Started scanning")
+
+    def stop_service(self):
+        self.sched.remove_all_jobs()
+        self.logger.info("Stopped scanning")
 
     def _on_pick(self):
         self._follow_button.disabled = self._list_view.value is None
 
     def _follow(self):
+        self.sched.remove_all_jobs()
+        self.save()
         global followed_device
-        followed_device = self.data["devices"]
+        followed_device = self._devices[self.data["devices"]-1]
         raise NextScene("Follow Device")
 
     def _get_device_info(self):
@@ -106,38 +113,141 @@ class MainView(Frame):
     def reload_devices(self):
         self._list_view.options = self._get_device_info()
 
-    def _get_client_info(self):
-        client_options = []
-        items = 0
-        for client_info_key, client_info_value in self._client.__dict__.items():
-            items += 1
-            client_options.append(([client_info_key, str(client_info_value)], items))
-        return client_options
-
     def update_client_info(self):
-        self._client_info_view.options = self._get_client_info()
+        global client
+        self._client_info_view.options = client.get_client_info()
 
     def run(self):
-        global mySniffer
+        global mySniffer, client, queue
         logger = logging.getLogger(config.SERVICE_LOGGER)
+        logger.info(self.sched.print_jobs())
         starttime = time.time()
         try:
-            if mySniffer is None or self._client.port is None:
-                setup(6)
+            if mySniffer == None or client.port == None:
+                if not setup(config.SETUP_DELAY):
+                    return
 
             mySniffer.scan()
             time.sleep(config.UPDATE_SCREEN_INTERVAL - ((time.time() - starttime) % config.UPDATE_SCREEN_INTERVAL))
             self._devices = mySniffer.getDevices().asList()
-            self._client.update_client_with_sniffer(mySniffer)
+            client.update_client_with_sniffer(mySniffer)
             self.update_client_info()
             self.reload_devices()
+            self._info_layout.update_widgets()
+        except Exception as e:
+            #Closing ser port is already done in Sniffer API
+            logger.exception("Background Service Exception (scanning)", exc_info=True)
+            client = Client()
+            self.update_client_info()
+            self._list_view.options = []
+            mySniffer = None
+        self._screen.force_update()
+
+    def _quit(self):
+        self._scene.add_effect(
+            PopUpDialog(self._screen,
+                        "Are you sure you want to quit?",
+                        ["Cancel", "Quit"],
+                        on_close=self._quit_confirm))
+
+    @staticmethod
+    def _quit_confirm(selected):
+        if selected == 1:
+            raise StopApplication("User pressed quit")
+
+
+class FollowView(Frame):
+    def __init__(self, screen, device):
+        super(FollowView, self).__init__(screen,
+                                       screen.height * 2 // 3,
+                                       screen.width * 2 // 3,
+                                       hover_focus=True,
+                                       title="Bluetooth Low Energy Sniffer - Following Device {}"
+                                         .format(get_Address(device.address) if device != None else ""))
+
+        self._device = device
+        self._packets = []
+        self.logger = logging.getLogger(config.SERVICE_LOGGER)
+
+        # Create the form for displaying the list of sniffed packets.
+        self._list_view = ListBox(
+            Widget.FILL_FRAME,
+            name="packets",
+            options=self._get_packets_info(),
+        )
+
+        # Create the form for displaying the list of client information.
+        global client
+        self._client_info_view = client.get_client_widget()
+
+        self._info_layout = Layout([100, 100], fill_frame=True)
+        self.add_layout(self._info_layout)
+        self._info_layout.add_widget(self._client_info_view, column=0)
+        self._info_layout.add_widget(self._list_view, column=1)
+
+        self._divider_layout = Layout([1])
+        self.add_layout(self._divider_layout)
+        self._divider_layout.add_widget(Divider())
+
+        layout2 = Layout([1, 1])
+        self.add_layout(layout2)
+        layout2.add_widget(Button("Quit", self._quit), 0)
+        layout2.add_widget(Button("Back", self._back), 1)
+        self.fix()
+
+        self.sched = BackgroundScheduler(daemon=True, logger=logging.getLogger(config.SCHEDULER_LOGGER))
+
+    def start_service(self):
+        if not self.sched.running:
+            self.sched.start()
+        self.sched.add_job(self.run, 'interval', seconds=config.UPDATE_SCREEN_INTERVAL, max_instances=1, id="following")
+        self.logger.info("Started following")
+
+    def stop_service(self):
+        self.sched.remove_all_jobs()
+        self.logger.info("Stopped following")
+
+    def _back(self):
+        self.sched.remove_all_jobs()
+        raise NextScene("Main")
+
+    def _get_packets_info(self):
+        list_of_packets = []
+        count = 0
+        if self._packets:
+            for packet in self._packets:
+                count += 1
+                list_of_packets.append(("RSSI: {} dBm | Payload: {}".format(packet.RSSI,
+                    packet.blePacket.payload if packet.blePacket else packet), count))
+        else:
+            list_of_packets = []
+        return list_of_packets
+
+    def update_client_info(self):
+        global client
+        self._client_info_view.options = client.get_client_info()
+
+    def run(self):
+        global mySniffer, client, queue
+        starttime = time.time()
+        try:
+            if mySniffer == None or client.port == None or self._device == None:
+                queue.put(item=("Change scene", NextScene("Main")))
+
+            if mySniffer.state != 1:
+                mySniffer.follow(self._device)
+
+            self._packets = mySniffer.getPackets()
+            time.sleep(config.UPDATE_SCREEN_INTERVAL - ((time.time() - starttime) % config.UPDATE_SCREEN_INTERVAL))
+            client.update_client_with_sniffer(mySniffer)
+            self.update_client_info()
+            self._get_packets_info()
             self._info_layout.update_widgets()
             self._screen.force_update()
         except Exception as e:
             #Closing ser port is already done in Sniffer API
-            time.sleep(5)
-            logger.exception("Background Service Exception", exc_info=True)
-            self._client = Client()
+            logger.exception("Background Service Exception (following)", exc_info=True)
+            client = Client()
             self.update_client_info()
             self._list_view.options = []
             mySniffer = None
@@ -155,111 +265,9 @@ class MainView(Frame):
             raise StopApplication("User pressed quit")
 
 
-class FollowView(Frame):
-    def __init__(self, screen, client, device):
-        super(FollowView, self).__init__(screen,
-                                       screen.height * 2 // 3,
-                                       screen.width * 2 // 3,
-                                       hover_focus=True,
-                                       title="Bluetooth Low Energy Sniffer - Following Device {}"
-                                         .format(get_Address(device.address) if device != None else ""))
+def setup(delay):
+    global mySniffer, client
 
-        self._device = device
-        self._client = client
-        self._packets = []
-
-        # Create the form for displaying the list of sniffed packets.
-        self._list_view = ListBox(
-            Widget.FILL_FRAME,
-            name="packets",
-            options=self._get_packets_info(),
-        )
-
-        # Create the form for displaying the list of client information.
-        self._client_info_view = MultiColumnListBox(
-            Widget.FILL_FRAME,
-            columns=["<50%", "<50%"],
-            label=None,
-            name="client_info_view",
-            options=self._get_client_info(),
-        )
-
-        self._info_layout = Layout([100, 100], fill_frame=True)
-        self.add_layout(self._info_layout)
-        self._info_layout.add_widget(self._client_info_view, column=0)
-        self._info_layout.add_widget(self._list_view, column=1)
-
-        self._divider_layout = Layout([1])
-        self.add_layout(self._divider_layout)
-        self._divider_layout.add_widget(Divider())
-
-        layout2 = Layout([1, 1])
-        self.add_layout(layout2)
-        layout2.add_widget(Button("Quit", self._quit_confirm), 0)
-        layout2.add_widget(Button("Back", self._back), 1)
-        self.fix()
-
-    def _back(self):
-        raise NextScene("Main")
-
-    def _get_packets_info(self):
-        list_of_packets = []
-        count = 0
-        if self._packets:
-            for packet in self._packets:
-                count += 1
-                list_of_packets.append(("RSSI: {} dBm | Payload: {}".format(packet.RSSI,
-                    packet.blePacket.payload if packet.blePacket else packet), count))
-        else:
-            list_of_packets = []
-        return list_of_packets
-
-    def _get_client_info(self):
-        client_options = []
-        items = 0
-        for client_info_key, client_info_value in self._client.__dict__.items():
-            items += 1
-            client_options.append(([client_info_key, client_info_value], items))
-        return client_options
-
-    def run(self):
-        global mySniffer
-        logger = logging.getLogger(config.SERVICE_LOGGER)
-        starttime = time.time()
-        try:
-            if mySniffer is None or self._client.port is None or self._device is None:
-                raise NextScene("Main")
-
-            mySniffer.follow(self._device)
-            self._packets = mySniffer.getPackets()
-            time.sleep(config.UPDATE_SCREEN_INTERVAL - ((time.time() - starttime) % config.UPDATE_SCREEN_INTERVAL))
-            self._client.update_client_with_sniffer(mySniffer)
-            self.update_client_info()
-            self._get_packets_info()
-            self._info_layout.update_widgets()
-            self._screen.force_update()
-        except Exception as e:
-            #Closing ser port is already done in Sniffer API
-            time.sleep(5)
-            logger.exception("Background Service Exception", exc_info=True)
-            self._client = Client()
-            self.update_client_info()
-            self._list_view.options = []
-            mySniffer = None
-
-    def update_client_info(self):
-        self._client_info_view.options = self._get_client_info()
-
-    @staticmethod
-    def _quit_confirm():
-        raise StopApplication("User pressed quit")
-
-
-def setup(delay=6):
-    global mySniffer
-    global client
-
-    initialize_service_logging(client=client)
     logger = logging.getLogger(config.SERVICE_LOGGER)
     logger.info("Trying to start a service")
 
@@ -271,7 +279,7 @@ def setup(delay=6):
         logger.info("Capturing data to Filebeat")
 
     # Initialize the device without specified serial port
-    # TODO: This is hack, should have proper automatic port discovery
+    # TODO: This is HACK, should have proper automatic port discovery - TROLL this is so dirty
     for port in list_ports.grep(config.SNIFFER_PORT_KEYWORD_SEARCH):
         try:
             mySniffer = Sniffer.Sniffer(port.device)
@@ -280,33 +288,57 @@ def setup(delay=6):
             mySniffer.scan()
             time.sleep(delay)
         except SerialException as e:
-            logger.error("Searching Sniffer on port {}, but not found with error {}".format(port.device, str(e)))
-            raise CloseSnifferException
+            logger.error("Setup Exception - Searching Sniffer on port {}, but not found with error {}".format(port.device, str(e)))
+            if mySniffer != None: mySniffer.doExit()
+            mySniffer = None
         except Exception:
-            logger.exception("exc_info", exc_info=True)
-            raise CloseSnifferException
+            logger.exception("Setup Exception", exc_info=True)
+            if mySniffer != None: mySniffer.doExit()
+            mySniffer = None
         else:
             client.update_client_with_sniffer(mySniffer)
             logger.info("Service successfully started")
-            break
-
-last_scene = None
-followed_device = None
+            return True
+    return False
 
 def demo(screen, scene):
-    global client, followed_device
+    global client, followed_device, queue
 
-    main_scene = MainView(screen, client)
+    main_scene = MainView(screen)
     scenes = [
         Scene([main_scene], -1, name="Main"),
-        Scene([FollowView(screen, client, followed_device)], -1, name="Follow Device")
+        Scene([FollowView(screen, followed_device)], -1, name="Follow Device")
     ]
 
     screen.set_scenes(scenes, start_scene=scene)
 
+    prev_index = None
     while True:
+        curr_index = screen._scene_index
+        if not queue.empty():
+            item_type, item = queue.get()
+
+            if item_type == "Change scene":
+                curr_scene = screen._scenes[curr_index]
+                try:
+                    raise item
+                except NextScene as e:
+                    curr_scene.exit()
+
+                    for i, scene in enumerate(screen._scenes):
+                        if curr_scene.name == e.name:
+                            screen._scene_index = i
+                            break
+
+        if curr_index != prev_index:
+            if prev_index != None:
+                screen._scenes[prev_index].effects[0].stop_service()
+            screen._scenes[curr_index].effects[0].start_service()
+
+        prev_index = curr_index
         screen.draw_next_frame(repeat=True)
         time.sleep(0.05)
+
 
         #TODO: Screen resizing
         #if screen.has_resized():
@@ -318,13 +350,10 @@ def demo(screen, scene):
 def main():
     global client, last_scene
     client = Client()
+    initialize_service_logging(client=client)
     while True:
         try:
             Screen.wrapper(demo, catch_interrupt=True, arguments=[last_scene])
-            if mySniffer: mySniffer.doExit()
-            sys.exit(-1)
-        except CloseSnifferException:
-            logger.exception("Closing Sniffer", exc_info=True)
             if mySniffer: mySniffer.doExit()
             sys.exit(-1)
         except StopApplication:
@@ -332,7 +361,7 @@ def main():
             if mySniffer: mySniffer.doExit()
             sys.exit(-1)
         except Exception as e:
-            logger.exception("Service has been closed (Unknown Exception)", exc_info=True)
+            logger.exception("Application Exit (Unknown Exception)", exc_info=True)
             if mySniffer: mySniffer.doExit()
             sys.exit(-1)
 
