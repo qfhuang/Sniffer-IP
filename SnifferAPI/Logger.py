@@ -14,7 +14,7 @@ import logging.handlers as logHandlers
 try:
     logFilePath=os.path.join(os.getenv('appdata'), 'Nordic Semiconductor', 'Sniffer', 'logs')
 except:
-    logFilePath="logs"
+    logFilePath="pcap_log"
 
 logFileName = os.path.join(logFilePath, 'log.txt')
 
