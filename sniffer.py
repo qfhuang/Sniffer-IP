@@ -124,17 +124,18 @@ class MainView(Frame):
         try:
             if mySniffer == None or client.port == None:
                 if not setup(config.SETUP_DELAY):
+                    if client.is_active:
+                        logger.warning("Client is inactive")
                     client.is_active = False
-                    logger.setLevel(logging.ERROR)
                     self.update_client_info()
                     self._screen.force_update()
                     time.sleep(60)
                     return
 
             if not client.is_active:
-                #Client became active we log everything
+                if not client.is_active:
+                    logger.info("Client is active")
                 client.is_active = True
-                logger.setLevel(logging.INFO)
                 self.update_client_info()
                 self._screen.force_update()
 
@@ -147,7 +148,7 @@ class MainView(Frame):
             self._info_layout.update_widgets()
         except Exception as e:
             #Closing ser port is already done in Sniffer API
-            logger.exception("Background Service Exception (scanning)", exc_info=True)
+            if client.is_active: logger.exception("Background Service Exception (scanning)", exc_info=True)
             client = Client()
             self.update_client_info()
             self._list_view.options = []
@@ -284,14 +285,14 @@ def setup(delay):
     global mySniffer, client
 
     logger = logging.getLogger(config.SERVICE_LOGGER)
-    logger.info("Trying to start a service")
+    if client.is_active: logger.info("Trying to start a service")
 
     if config.SAVE_TO_PCAP:
-        logger.info("Capturing data to " + CaptureFiles.captureFilePath)
+        if client.is_active: logger.info("Capturing data to " + CaptureFiles.captureFilePath)
 
     if config.SAVE_TO_FILEBEAT:
         initialize_packets_logging_to_Filebeat()
-        logger.info("Capturing data to Filebeat")
+        if client.is_active: logger.info("Capturing data to Filebeat")
 
     # Initialize the device without specified serial port
     # TODO: This is HACK, should have proper automatic port discovery - TROLL this is so dirty
@@ -303,18 +304,21 @@ def setup(delay):
             mySniffer.scan()
             time.sleep(delay)
         except SerialException as e:
-            logger.warning("Setup Exception - Searching Sniffer on port {}, but not found with error {}".format(port.device, str(e)))
+            if client.is_active:
+                logger.warning("Setup Exception - Searching Sniffer on port {}, but not found with error {}".format(port.device, str(e)))
             if mySniffer != None: mySniffer.doExit()
             mySniffer = None
         except Exception as e:
-            logger.warning("Setup Exception {}".format(str(e)))
+            if client.is_active:
+                logger.warning("Setup Exception {}".format(str(e)))
             if mySniffer != None: mySniffer.doExit()
             mySniffer = None
         else:
             client.update_client_with_sniffer(mySniffer)
-            logger.info("Service successfully started")
+            if client.is_active:
+                logger.info("Service successfully started")
             return True
-    logger.warning("Setup was unsuccessful")
+    if client.is_active: logger.warning("Setup was unsuccessful")
     return False
 
 def demo(screen, scene):
