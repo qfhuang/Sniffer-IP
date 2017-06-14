@@ -21,7 +21,6 @@ def initialize_packets_logging_to_Filebeat():
     logger = logging.getLogger(BLE_PACKETS_LOGGER)
     logger.setLevel(PACKETS_LOG_LEVEL)
     stream_handler = logging.StreamHandler(stream=None)
-    logger.propagate = False
     handler = logging.handlers.TimedRotatingFileHandler(log_file,
                                        when=PACKETS_LOG_FILE_TIME_BASE,
                                        interval=1,
@@ -29,13 +28,13 @@ def initialize_packets_logging_to_Filebeat():
                                        utc=True)
     logger.addHandler(handler)
     logger.addHandler(stream_handler)
+    logger.propagate = False
 
 def initialize_service_logging(client):
     log_file = os.path.join("Logs", SERVICE_LOG_FILE_NAME)
     logger = logging.getLogger(SERVICE_LOGGER)
     logger.addFilter(ServiceFilter(client))
     logger.setLevel(SERVICE_LOG_LEVEL)
-    logger.propagate = False
     stream_handler = logging.StreamHandler(stream=None)
     handler = logging.handlers.TimedRotatingFileHandler(log_file,
                                        when=SERVICE_LOG_FILE_TIME_BASE,
@@ -47,13 +46,13 @@ def initialize_service_logging(client):
     handler.setFormatter(formatter)
     logger.addHandler(stream_handler)
     logger.addHandler(handler)
+    logger.propagate = False
 
 
 def initialize_scheduler_logging():
     log_file = os.path.join("Logs", SCHEDULER_LOG_FILE_NAME)
     logger = logging.getLogger(SCHEDULER_LOGGER)
     logger.setLevel(SCHEDULER_LOG_LEVEL)
-    logger.propagate = False
     stream_handler = logging.StreamHandler(stream=None)
     handler = logging.handlers.TimedRotatingFileHandler(log_file,
                                                         when=SCHEDULER_LOG_FILE_TIME_BASE,
@@ -65,3 +64,4 @@ def initialize_scheduler_logging():
     handler.setFormatter(formatter)
     logger.addFilter(stream_handler)
     logger.addHandler(handler)
+    logger.propagate = False

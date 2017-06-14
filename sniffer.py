@@ -147,7 +147,6 @@ class MainView(Frame):
             self._info_layout.update_widgets()
         except Exception as e:
             #Closing ser port is already done in Sniffer API
-            time.sleep(1)
             logger.exception("Background Service Exception (scanning)", exc_info=True)
             client = Client()
             self.update_client_info()
@@ -253,7 +252,7 @@ class FollowView(Frame):
                 mySniffer.follow(self._device)
 
             self._packets = mySniffer.getPackets()
-            time.sleep(config.UPDATE_SCREEN_INTERVAL - ((time.time() - starttime) % config.UPDATE_SCREEN_INTERVAL))
+            time.sleep((config.UPDATE_SCREEN_INTERVAL - ((time.time() - starttime) % config.UPDATE_SCREEN_INTERVAL)) - 0.5)
             client.update_client_with_sniffer(mySniffer)
             self.update_client_info()
             self.reload_packets()
