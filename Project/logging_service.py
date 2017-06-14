@@ -54,4 +54,7 @@ def initialize_scheduler_logging():
                                                         interval=1,
                                                         backupCount=SCHEDULER_LOG_CLEAN_UP_INTERVAL,
                                                         utc=True)
+    format_str = '%(message)%(levelname)%(name)%(asctime)'
+    formatter = jsonlogger.JsonFormatter(format_str, '%Y-%m-%dT%H:%M:%S')
+    handler.setFormatter(formatter)
     logger.addHandler(handler)

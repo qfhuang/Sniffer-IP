@@ -1,8 +1,9 @@
 import socket
 
+import logging
 from asciimatics.widgets import MultiColumnListBox, Widget
 
-from Project.config import SW_VERSION
+from Project.config import SW_VERSION, SERVICE_LOGGER
 from arrow import utcnow
 
 from SnifferAPI.Devices import Device
@@ -16,6 +17,7 @@ class Client():
         self.port = None
         self.missed_packets = None
         self.online_since = str(utcnow())
+        self.is_active = True
 
     def to_JSON(self):
         data  = self.__dict__.copy()
@@ -52,3 +54,10 @@ class Client():
             name="client_info_view",
             options=self.get_client_info(),
         ))
+
+    def send_client_status(self):
+        logger = logging.getLogger(SERVICE_LOGGER)
+        logger_lvl = logger.getEffectiveLevel()
+        logger.setLevel(logging.INFO)
+        logger.info("Client status")
+        logger.setLevel(logger_lvl)

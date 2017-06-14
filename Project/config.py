@@ -1,12 +1,13 @@
-from logging import INFO
+from logging import INFO, ERROR
 
 SW_VERSION = "1.0-beta"
-SNIFFER_PORT_KEYWORD_SEARCH = ""
+SNIFFER_PORT_KEYWORD_SEARCH = "Serial"
 
 SAVE_TO_PCAP = False
 SAVE_TO_FILEBEAT = True
 
 SETUP_DELAY = 6 #in sec
+SEND_CLIENT_STATUS_INTERVAL = 60*5 #in sec
 
 #Logging Packets Settings
 BLE_PACKETS_LOGGER = 'BLE Packets Log'
@@ -25,7 +26,7 @@ SERVICE_CLEAN_UP_INTERVAL = 30 #log clean up interval in days
 #Logging Scheduler Settings
 SCHEDULER_LOGGER = "Scheduler Log"
 SCHEDULER_LOG_FILE_NAME = "scheduler.log"
-SCHEDULER_LOG_LEVEL = INFO
+SCHEDULER_LOG_LEVEL = ERROR
 SCHEDULER_LOG_FILE_TIME_BASE = 'midnight'
 SCHEDULER_LOG_CLEAN_UP_INTERVAL = 1 #log clean up interval in days
 

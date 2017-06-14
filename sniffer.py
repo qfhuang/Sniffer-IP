@@ -27,7 +27,7 @@ last_scene = None
 logger = logging.getLogger(config.SERVICE_LOGGER)
 queue = Queue()
 initialize_scheduler_logging()
-logging.getLogger().setLevel(logging.CRITICAL)
+#logging.getLogger().setLevel(logging.CRITICAL)
 
 class MainView(Frame):
     def __init__(self, screen):
@@ -124,7 +124,19 @@ class MainView(Frame):
         try:
             if mySniffer == None or client.port == None:
                 if not setup(config.SETUP_DELAY):
+                    client.is_active = False
+                    logger.setLevel(logging.ERROR)
+                    self.update_client_info()
+                    self._screen.force_update()
+                    time.sleep(60)
                     return
+
+            if not client.is_active:
+                #Client became active we log everything
+                client.is_active = True
+                logger.setLevel(logging.INFO)
+                self.update_client_info()
+                self._screen.force_update()
 
             mySniffer.scan()
             time.sleep(config.UPDATE_SCREEN_INTERVAL - ((time.time() - starttime) % config.UPDATE_SCREEN_INTERVAL))
@@ -135,6 +147,7 @@ class MainView(Frame):
             self._info_layout.update_widgets()
         except Exception as e:
             #Closing ser port is already done in Sniffer API
+            time.sleep(1)
             logger.exception("Background Service Exception (scanning)", exc_info=True)
             client = Client()
             self.update_client_info()
@@ -222,15 +235,18 @@ class FollowView(Frame):
             list_of_packets = []
         return list_of_packets
 
+    def reload_packets(self):
+        self._list_view.options = self._get_packets_info()
+
     def update_client_info(self):
         global client
         self._client_info_view.options = client.get_client_info()
 
     def run(self):
-        global mySniffer, client, queue
+        global mySniffer, client, queue, followed_device
         starttime = time.time()
         try:
-            if mySniffer == None or client.port == None or self._device == None:
+            if mySniffer == None or client.port == None or followed_device == None:
                 queue.put(item=("Change scene", NextScene("Main")))
 
             if mySniffer.state != 1:
@@ -240,11 +256,12 @@ class FollowView(Frame):
             time.sleep(config.UPDATE_SCREEN_INTERVAL - ((time.time() - starttime) % config.UPDATE_SCREEN_INTERVAL))
             client.update_client_with_sniffer(mySniffer)
             self.update_client_info()
-            self._get_packets_info()
+            self.reload_packets()
             self._info_layout.update_widgets()
             self._screen.force_update()
         except Exception as e:
             #Closing ser port is already done in Sniffer API
+            time.sleep(1)
             logger.exception("Background Service Exception (following)", exc_info=True)
             client = Client()
             self.update_client_info()
@@ -287,17 +304,18 @@ def setup(delay):
             mySniffer.scan()
             time.sleep(delay)
         except SerialException as e:
-            logger.error("Setup Exception - Searching Sniffer on port {}, but not found with error {}".format(port.device, str(e)))
+            logger.warning("Setup Exception - Searching Sniffer on port {}, but not found with error {}".format(port.device, str(e)))
             if mySniffer != None: mySniffer.doExit()
             mySniffer = None
-        except Exception:
-            logger.exception("Setup Exception", exc_info=True)
+        except Exception as e:
+            logger.warning("Setup Exception {}".format(str(e)))
             if mySniffer != None: mySniffer.doExit()
             mySniffer = None
         else:
             client.update_client_with_sniffer(mySniffer)
             logger.info("Service successfully started")
             return True
+    logger.warning("Setup was unsuccessful")
     return False
 
 def demo(screen, scene):
@@ -350,6 +368,9 @@ def main():
     global client, last_scene
     client = Client()
     initialize_service_logging(client=client)
+    sched = BackgroundScheduler(daemon=True, logger=logging.getLogger(config.SCHEDULER_LOGGER))
+    sched.start()
+    sched.add_job(client.send_client_status, 'interval', seconds=config.SEND_CLIENT_STATUS_INTERVAL, max_instances=1, id="status")
     while True:
         try:
             Screen.wrapper(demo, catch_interrupt=True, arguments=[last_scene])

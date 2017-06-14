@@ -3,7 +3,7 @@ import json
 import requests
 
 #Delete old documents
-requests.delete('http://localhost:9200/filebeat-*')
+#requests.delete('http://93.103.95.81:9200/filebeat-*')
 
 
 #Pipeline setup
@@ -33,4 +33,4 @@ data = {
   ]
 }
 
-#print(requests.put('http://localhost:9200/_ingest/pipeline/ble-pipeline', data=json.dumps(data)))
+print(requests.put('http://93.103.95.81:9200/_ingest/pipeline/ble-pipeline', data=json.dumps(data)))
