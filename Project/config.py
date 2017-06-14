@@ -1,7 +1,9 @@
+import sys
+
 from logging import INFO, ERROR
 
 SW_VERSION = "1.0-beta"
-SNIFFER_PORT_KEYWORD_SEARCH = "Serial"
+SNIFFER_PORT_KEYWORD_SEARCH = "Serial" if sys.platform == 'win32' else SNIFFER_PORT_KEYWORD_SEARCH = ""
 
 SAVE_TO_PCAP = False
 SAVE_TO_FILEBEAT = True
