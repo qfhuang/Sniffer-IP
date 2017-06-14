@@ -139,7 +139,7 @@ class MainView(Frame):
                 self._screen.force_update()
 
             mySniffer.scan()
-            time.sleep(config.UPDATE_SCREEN_INTERVAL - ((time.time() - starttime) % config.UPDATE_SCREEN_INTERVAL))
+            time.sleep((config.UPDATE_SCREEN_INTERVAL - ((time.time() - starttime) % config.UPDATE_SCREEN_INTERVAL)) -1)
             self._devices = mySniffer.getDevices().asList()
             client.update_client_with_sniffer(mySniffer)
             self.update_client_info()
