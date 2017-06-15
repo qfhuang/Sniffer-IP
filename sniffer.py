@@ -114,7 +114,7 @@ class MainView(Frame):
         self._client_info_view.options = client.get_client_info()
 
     def run(self):
-        global mySniffer, client, queue
+        global mySniffer, queue
         logger = logging.getLogger(config.SERVICE_LOGGER)
         starttime = time.time()
         try:
@@ -122,7 +122,8 @@ class MainView(Frame):
                 if not setup(config.SETUP_DELAY):
                     if client.is_active:
                         logger.warning("Client is inactive")
-                    client.is_active = False
+                    queue.put(item=("Client Inactive", ""))
+                    time.sleep(0.1)
                     self.update_client_info()
                     self._screen.force_update()
                     return
@@ -130,7 +131,8 @@ class MainView(Frame):
             if not client.is_active:
                 if not client.is_active:
                     logger.info("Client is active")
-                client.is_active = True
+                queue.put(item=("Client Active", ""))
+                time.sleep(0.1)
                 self.update_client_info()
                 self._screen.force_update()
 
@@ -242,7 +244,7 @@ class FollowView(Frame):
         self._client_info_view.options = client.get_client_info()
 
     def run(self):
-        global mySniffer, client, queue
+        global mySniffer, queue
         starttime = time.time()
         try:
             if mySniffer == None or client.port == None or followed_device == None:
@@ -315,7 +317,7 @@ def setup(delay=config.SETUP_DELAY):
             if mySniffer != None: mySniffer.doExit()
             mySniffer = None
         else:
-            client = client.update_client_with_sniffer(mySniffer)
+            #client = client.update_client_with_sniffer(mySniffer)
             logger.info("Service successfully started")
             return True
     if client.is_active: logger.warning("Setup was unsuccessful")
@@ -359,6 +361,11 @@ def demo(screen, scene):
                 client.update_client_with_sniffer(item)
             elif item_type == "Error":
                 client = Client()
+            elif item_type == "Client Inactive":
+                client.is_active = False
+            elif item_type == "Client Active":
+                client.is_active = True
+
         if curr_index != prev_index:
             if prev_index != None:
                 screen._scenes[prev_index].effects[0].stop_service()
