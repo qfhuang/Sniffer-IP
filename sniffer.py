@@ -24,10 +24,8 @@ mySniffer = None
 followed_device = None
 client = None
 last_scene = None
-logger = logging.getLogger(config.SERVICE_LOGGER)
 queue = Queue()
 initialize_scheduler_logging()
-#logging.getLogger().setLevel(logging.CRITICAL)
 
 class MainView(Frame):
     def __init__(self, screen):
@@ -41,7 +39,6 @@ class MainView(Frame):
         self._screen = screen
         self._frame_num = 0
         self._devices = []
-        self.logger = logging.getLogger(config.SERVICE_LOGGER)
 
         # Create the form for displaying the list of found devices.
         self._list_view = ListBox(
@@ -82,11 +79,13 @@ class MainView(Frame):
         if not self.sched.running:
             self.sched.start()
         self.sched.add_job(self.run, 'interval', seconds=config.UPDATE_SCREEN_INTERVAL, max_instances=1, id="scanning")
-        self.logger.info("Started scanning")
+        logger = logging.getLogger(config.SERVICE_LOGGER)
+        logger.info("Started scanning")
 
     def stop_service(self):
         self.sched.remove_all_jobs()
-        self.logger.info("Stopped scanning")
+        logger = logging.getLogger(config.SERVICE_LOGGER)
+        logger.info("Stopped scanning")
 
     def _on_pick(self):
         self._follow_button.disabled = self._list_view.value is None
@@ -179,7 +178,6 @@ class FollowView(Frame):
 
         self._device = device
         self._packets = []
-        self.logger = logging.getLogger(config.SERVICE_LOGGER)
 
         # Create the form for displaying the list of sniffed packets.
         self._list_view = ListBox(
@@ -213,11 +211,13 @@ class FollowView(Frame):
         if not self.sched.running:
             self.sched.start()
         self.sched.add_job(self.run, 'interval', seconds=config.UPDATE_SCREEN_INTERVAL, max_instances=1, id="following")
-        self.logger.info("Started following")
+        logger = logging.getLogger(config.SERVICE_LOGGER)
+        logger.info("Started following")
 
     def stop_service(self):
         self.sched.remove_all_jobs()
-        self.logger.info("Stopped following")
+        logger = logging.getLogger(config.SERVICE_LOGGER)
+        logger.info("Stopped following")
 
     def _back(self):
         self.sched.remove_all_jobs()
@@ -262,6 +262,7 @@ class FollowView(Frame):
         except Exception as e:
             #Closing ser port is already done in Sniffer API
             time.sleep(1)
+            logger = logging.getLogger(config.SERVICE_LOGGER)
             logger.exception("Background Service Exception (following)", exc_info=True)
             client = Client()
             self.update_client_info()
