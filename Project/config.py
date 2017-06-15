@@ -4,10 +4,9 @@ from logging import INFO, ERROR
 
 SW_VERSION = "1.0-beta"
 
-SNIFFER_PORT_KEYWORD_SEARCH = ""
+SNIFFER_PORT_KEYWORD_SEARCH = "dev"
 if sys.platform == 'win32':
     SNIFFER_PORT_KEYWORD_SEARCH = "Serial"
-
 
 SAVE_TO_PCAP = False
 SAVE_TO_FILEBEAT = True
