@@ -355,13 +355,16 @@ def demo(screen, scene):
                             screen._scene_index = i
                             break
 
+
+        screen.draw_next_frame(repeat=True)
+
         if curr_index != prev_index:
             if prev_index != None:
                 screen._scenes[prev_index].effects[0].stop_service()
+            time.sleep(0.2)
             screen._scenes[curr_index].effects[0].start_service()
 
         prev_index = curr_index
-        screen.draw_next_frame(repeat=True)
         time.sleep(0.05)
 
 
@@ -383,8 +386,8 @@ def main():
     while True:
         try:
             Screen.wrapper(demo, catch_interrupt=True, arguments=[last_scene])
-            if mySniffer: mySniffer.doExit()
-            sys.exit(-1)
+            #if mySniffer: mySniffer.doExit()
+            #sys.exit(-1)
         except StopApplication:
             logger.info("Application Exit (user pressed Quit)")
             if mySniffer: mySniffer.doExit()
