@@ -310,13 +310,9 @@ def setup(delay=config.SETUP_DELAY):
         except SerialException as e:
             if client.is_active:
                 logger.warning("Setup Exception - Searching Sniffer on port {}, but not found with error {}".format(port.device, str(e)))
-            if mySniffer != None: mySniffer.doExit()
-            mySniffer = None
         except Exception as e:
             if client.is_active:
                 logger.warning("Setup Exception {}".format(str(e)))
-            if mySniffer != None: mySniffer.doExit()
-            mySniffer = None
         else:
             client = client.update_client_with_sniffer(mySniffer)
             logger.info("Service successfully started")
