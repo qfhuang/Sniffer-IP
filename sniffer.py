@@ -126,8 +126,8 @@ class MainView(Frame):
             if mySniffer == None or client.port == None:
                     if client.is_active:
                         logger.warning("Client is inactive")
-                        queue.put(item=("Retry Setup", ""))
                         client.is_active = False
+                    queue.put(item=("Retry Setup", ""))
                     self.update_client_info()
                     self._screen.force_update()
                     return
@@ -301,7 +301,6 @@ def setup(delay=config.SETUP_DELAY):
     # Initialize the device without specified serial port
     # TODO: This is HACK, should have proper automatic port discovery - TROLL this is so dirty
     for port in list_ports.grep(config.SNIFFER_PORT_KEYWORD_SEARCH):
-        if mySniffer: mySniffer.doExit()
         try:
             mySniffer = Sniffer.Sniffer(port.device)
             mySniffer.start()
@@ -319,11 +318,11 @@ def setup(delay=config.SETUP_DELAY):
             if mySniffer != None: mySniffer.doExit()
             mySniffer = None
         else:
-            client.update_client_with_sniffer(mySniffer)
-            if client.is_active:
-                logger.info("Service successfully started")
+            client = client.update_client_with_sniffer(mySniffer)
+            logger.info("Service successfully started")
             return True
     if client.is_active: logger.warning("Setup was unsuccessful")
+    client.is_active = False
     return False
 
 def demo(screen, scene):
@@ -378,7 +377,7 @@ def demo(screen, scene):
                 if not setup_sched.running:
                     setup_sched.start()
                 setup_sched.add_job(setup, 'interval', seconds=config.SETUP_DELAY * 4, max_instances=1,
-                                    id="scanning", replace_existing=True,
+                                    id="setup", replace_existing=True,
                                     next_run_time=datetime.now())
 
             if item_type == "Setup Success":
@@ -387,8 +386,7 @@ def demo(screen, scene):
         if curr_index != prev_index:
             if prev_index != None:
                 screen._scenes[prev_index].effects[0].stop_service()
-            if client.is_active:
-                screen._scenes[curr_index].effects[0].start_service()
+            screen._scenes[curr_index].effects[0].start_service()
 
         prev_index = curr_index
         screen.draw_next_frame(repeat=True)
