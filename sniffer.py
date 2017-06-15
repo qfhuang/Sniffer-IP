@@ -369,6 +369,7 @@ def demo(screen, scene):
 
 
 def main():
+    logger = logging.getLogger(config.SERVICE_LOGGER)
     global client, last_scene
     client = Client()
     initialize_service_logging(client=client)
