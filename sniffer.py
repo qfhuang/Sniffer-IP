@@ -50,7 +50,6 @@ class MainView(Frame):
         )
 
         # Create the form for displaying the list of client information.
-        global client
         self._client_info_view = client.get_client_widget()
 
         self._info_layout = Layout([100, 100], fill_frame=True)
@@ -67,9 +66,6 @@ class MainView(Frame):
         self.add_layout(self._button_layout)
         self._button_layout.add_widget(self._follow_button, 0)
         self._button_layout.add_widget(Button("Quit", self._quit), 1)
-
-        global  followed_device
-        followed_device = None
 
         self.fix()
         self._on_pick()
@@ -115,7 +111,6 @@ class MainView(Frame):
         self._list_view.options = self._get_device_info()
 
     def update_client_info(self):
-        global client
         self._client_info_view.options = client.get_client_info()
 
     def run(self):
@@ -124,10 +119,10 @@ class MainView(Frame):
         starttime = time.time()
         try:
             if mySniffer == None or client.port == None:
+                if not setup(config.SETUP_DELAY):
                     if client.is_active:
                         logger.warning("Client is inactive")
-                        client.is_active = False
-                    queue.put(item=("Retry Setup", ""))
+                    client.is_active = False
                     self.update_client_info()
                     self._screen.force_update()
                     return
@@ -135,7 +130,6 @@ class MainView(Frame):
             if not client.is_active:
                 if not client.is_active:
                     logger.info("Client is active")
-                    queue.put(item=("Setup Success", ""))
                 client.is_active = True
                 self.update_client_info()
                 self._screen.force_update()
@@ -246,7 +240,7 @@ class FollowView(Frame):
         self._client_info_view.options = client.get_client_info()
 
     def run(self):
-        global mySniffer, client, queue, followed_device
+        global mySniffer, client, queue
         starttime = time.time()
         try:
             if mySniffer == None or client.port == None or followed_device == None:
@@ -310,20 +304,22 @@ def setup(delay=config.SETUP_DELAY):
         except SerialException as e:
             if client.is_active:
                 logger.warning("Setup Exception - Searching Sniffer on port {}, but not found with error {}".format(port.device, str(e)))
+            if mySniffer != None: mySniffer.doExit()
+            mySniffer = None
         except Exception as e:
             if client.is_active:
                 logger.warning("Setup Exception {}".format(str(e)))
+            if mySniffer != None: mySniffer.doExit()
+            mySniffer = None
         else:
             client = client.update_client_with_sniffer(mySniffer)
             logger.info("Service successfully started")
-            client.has_setup_failed = False
             return True
     if client.is_active: logger.warning("Setup was unsuccessful")
-    client.has_setup_failed = True
     return False
 
 def demo(screen, scene):
-    global client, followed_device, queue
+    global client, queue
 
     client = Client()
     initialize_service_logging(client=client)
@@ -332,8 +328,6 @@ def demo(screen, scene):
     sched.start()
     sched.add_job(client.send_client_status, 'interval', seconds=config.SEND_CLIENT_STATUS_INTERVAL, max_instances=1,
                   id="status")
-
-    setup_sched = BackgroundScheduler(daemon=True, logger=logging.getLogger(config.SCHEDULER_LOGGER))
 
     main_scene = MainView(screen)
     scenes = [
@@ -344,17 +338,8 @@ def demo(screen, scene):
     screen.set_scenes(scenes, start_scene=scene)
 
     prev_index = None
-
-    if not setup_sched.running:
-        setup_sched.start()
-    setup_sched.add_job(setup, 'interval', seconds=config.SETUP_DELAY * 4, max_instances=1,
-                        id="setup", replace_existing=True,
-                        next_run_time=datetime.now())
-    start_time = time.time()
-
     while True:
         curr_index = screen._scene_index
-
         if not queue.empty():
             item_type, item = queue.get()
 
@@ -370,20 +355,10 @@ def demo(screen, scene):
                             screen._scene_index = i
                             break
 
-            if item_type == "Retry Setup" and time.time() - start_time > config.SETUP_RETRY:
-                if not setup_sched.running:
-                    setup_sched.start()
-                setup_sched.add_job(setup, 'interval', seconds=config.SETUP_DELAY * 4, max_instances=1,
-                                    id="setup", replace_existing=True,
-                                    next_run_time=datetime.now())
-
-            if item_type == "Setup Success":
-                setup_sched.remove_all_jobs()
-
         if curr_index != prev_index:
             if prev_index != None:
                 screen._scenes[prev_index].effects[0].stop_service()
-            if not client.has_setup_failed: screen._scenes[curr_index].effects[0].start_service()
+            screen._scenes[curr_index].effects[0].start_service()
 
         prev_index = curr_index
         screen.draw_next_frame(repeat=True)
@@ -399,12 +374,11 @@ def demo(screen, scene):
 
 def main():
     logger = logging.getLogger(config.SERVICE_LOGGER)
-    global client, last_scene
     while True:
         try:
             Screen.wrapper(demo, catch_interrupt=True, arguments=[last_scene])
-            #if mySniffer: mySniffer.doExit()
-            #sys.exit(-1)
+            if mySniffer: mySniffer.doExit()
+            sys.exit(-1)
         except StopApplication:
             logger.info("Application Exit (user pressed Quit)")
             if mySniffer: mySniffer.doExit()
