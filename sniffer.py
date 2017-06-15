@@ -320,9 +320,10 @@ def setup(delay=config.SETUP_DELAY):
         else:
             client = client.update_client_with_sniffer(mySniffer)
             logger.info("Service successfully started")
+            client.has_setup_failed = False
             return True
     if client.is_active: logger.warning("Setup was unsuccessful")
-    client.is_active = False
+    client.has_setup_failed = True
     return False
 
 def demo(screen, scene):
@@ -386,7 +387,7 @@ def demo(screen, scene):
         if curr_index != prev_index:
             if prev_index != None:
                 screen._scenes[prev_index].effects[0].stop_service()
-            screen._scenes[curr_index].effects[0].start_service()
+            if not client.has_setup_failed: screen._scenes[curr_index].effects[0].start_service()
 
         prev_index = curr_index
         screen.draw_next_frame(repeat=True)

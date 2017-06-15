@@ -18,9 +18,11 @@ class Client():
         self.missed_packets = None
         self.online_since = str(utcnow())
         self.is_active = True
+        self.has_setup_failed = False
 
     def to_JSON(self):
         data  = self.__dict__.copy()
+        data.pop('has_setup_failed')
         return data
 
     def update_client_with_sniffer(self, sniffer):
