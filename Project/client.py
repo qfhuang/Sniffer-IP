@@ -57,7 +57,4 @@ class Client():
 
     def send_client_status(self):
         logger = logging.getLogger(SERVICE_LOGGER)
-        logger_lvl = logger.getEffectiveLevel()
-        logger.setLevel(logging.INFO)
         logger.info("Client status")
-        logger.setLevel(logger_lvl)

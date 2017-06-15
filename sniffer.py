@@ -137,14 +137,16 @@ class MainView(Frame):
             mySniffer.scan()
             time.sleep((config.UPDATE_SCREEN_INTERVAL - ((time.time() - starttime) % config.UPDATE_SCREEN_INTERVAL)) -1)
             self._devices = mySniffer.getDevices().asList()
-            client.update_client_with_sniffer(mySniffer)
+            queue.put(item=("Update Client", mySniffer))
+            time.sleep(0.1)
             self.update_client_info()
             self.reload_devices()
             self._info_layout.update_widgets()
         except Exception as e:
             #Closing ser port is already done in Sniffer API
             if client.is_active: logger.exception("Background Service Exception (scanning)", exc_info=True)
-            client = Client()
+            queue.put(item=("Error", ""))
+            time.sleep(0.1)
             self.update_client_info()
             self._list_view.options = []
             mySniffer = None
@@ -251,17 +253,18 @@ class FollowView(Frame):
 
             self._packets = mySniffer.getPackets()
             time.sleep((config.UPDATE_SCREEN_INTERVAL - ((time.time() - starttime) % config.UPDATE_SCREEN_INTERVAL)) - 0.5)
-            client.update_client_with_sniffer(mySniffer)
+            queue.put(item=("Update Client", mySniffer))
+            time.sleep(0.1)
             self.update_client_info()
             self.reload_packets()
             self._info_layout.update_widgets()
             self._screen.force_update()
         except Exception as e:
             #Closing ser port is already done in Sniffer API
-            time.sleep(1)
             logger = logging.getLogger(config.SERVICE_LOGGER)
             logger.exception("Background Service Exception (following)", exc_info=True)
-            client = Client()
+            queue.put(item=("Error", ""))
+            time.sleep(0.1)
             self.update_client_info()
             self._list_view.options = []
             mySniffer = None
@@ -319,11 +322,9 @@ def setup(delay=config.SETUP_DELAY):
     return False
 
 def demo(screen, scene):
-    global client, queue
-
+    global client
     client = Client()
     initialize_service_logging(client=client)
-
     sched = BackgroundScheduler(daemon=True, logger=logging.getLogger(config.SCHEDULER_LOGGER))
     sched.start()
     sched.add_job(client.send_client_status, 'interval', seconds=config.SEND_CLIENT_STATUS_INTERVAL, max_instances=1,
@@ -331,8 +332,8 @@ def demo(screen, scene):
 
     main_scene = MainView(screen)
     scenes = [
-        Scene([main_scene], -1, name="Main"),
-        Scene([FollowView(screen, followed_device)], -1, name="Follow Device")
+        Scene([main_scene], 0, name="Main"),
+        Scene([FollowView(screen, followed_device)], 0, name="Follow Device")
     ]
 
     screen.set_scenes(scenes, start_scene=scene)
@@ -354,7 +355,10 @@ def demo(screen, scene):
                         if curr_scene.name == e.name:
                             screen._scene_index = i
                             break
-
+            elif item_type == "Update Client":
+                client.update_client_with_sniffer(item)
+            elif item_type == "Error":
+                client = Client()
         if curr_index != prev_index:
             if prev_index != None:
                 screen._scenes[prev_index].effects[0].stop_service()
