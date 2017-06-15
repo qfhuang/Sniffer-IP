@@ -380,7 +380,7 @@ def main():
     logger = logging.getLogger(config.SERVICE_LOGGER)
     while True:
         try:
-            Screen.wrapper(demo, catch_interrupt=True, arguments=[last_scene])
+            Screen.wrapper(demo, catch_interrupt=False, arguments=[last_scene])
             if mySniffer: mySniffer.doExit()
             sys.exit(-1)
         except StopApplication:
