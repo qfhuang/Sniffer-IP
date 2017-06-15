@@ -1,6 +1,7 @@
 import sys
 import time
 import logging
+from datetime import datetime
 from queue import Queue
 
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -78,7 +79,8 @@ class MainView(Frame):
     def start_service(self):
         if not self.sched.running:
             self.sched.start()
-        self.sched.add_job(self.run, 'interval', seconds=config.UPDATE_SCREEN_INTERVAL, max_instances=1, id="scanning")
+        self.sched.add_job(self.run, 'interval', seconds=config.UPDATE_SCREEN_INTERVAL, max_instances=1, id="scanning",
+                           next_run_time=datetime.now())
         logger = logging.getLogger(config.SERVICE_LOGGER)
         logger.info("Started scanning")
 
@@ -210,7 +212,8 @@ class FollowView(Frame):
     def start_service(self):
         if not self.sched.running:
             self.sched.start()
-        self.sched.add_job(self.run, 'interval', seconds=config.UPDATE_SCREEN_INTERVAL, max_instances=1, id="following")
+        self.sched.add_job(self.run, 'interval', seconds=config.UPDATE_SCREEN_INTERVAL, max_instances=1, id="following",
+                           next_run_time=datetime.now())
         logger = logging.getLogger(config.SERVICE_LOGGER)
         logger.info("Started following")
 
@@ -298,6 +301,7 @@ def setup(delay):
     # Initialize the device without specified serial port
     # TODO: This is HACK, should have proper automatic port discovery - TROLL this is so dirty
     for port in list_ports.grep(config.SNIFFER_PORT_KEYWORD_SEARCH):
+        if mySniffer: mySniffer.doExit()
         try:
             mySniffer = Sniffer.Sniffer(port.device)
             mySniffer.start()
