@@ -1,6 +1,6 @@
 import time, os, logging, traceback, threading
 import logging.handlers as logHandlers
-
+from Project.config import PCAP_FILE_DIRECTORY
 #################################################################
 # This file contains the logger. To log a line, simply write     #
 # 'logging.[level]("whatever you want to log")'                    #
@@ -11,10 +11,8 @@ import logging.handlers as logHandlers
 # will result in the line being appended to the log file        #
 #################################################################
 
-try:
-    logFilePath=os.path.join(os.getenv('appdata'), 'Nordic Semiconductor', 'Sniffer', 'logs')
-except:
-    logFilePath="pcap_log"
+
+logFilePath=PCAP_FILE_DIRECTORY
 
 logFileName = os.path.join(logFilePath, 'log.txt')
 
