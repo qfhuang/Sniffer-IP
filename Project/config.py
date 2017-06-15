@@ -4,7 +4,7 @@ from logging import INFO, ERROR
 
 SW_VERSION = "1.0-beta"
 
-SNIFFER_PORT_KEYWORD_SEARCH = "dev"
+SNIFFER_PORT_KEYWORD_SEARCH = "USB"
 if sys.platform == 'win32':
     SNIFFER_PORT_KEYWORD_SEARCH = "Serial"
 
