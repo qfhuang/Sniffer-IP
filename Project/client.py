@@ -1,17 +1,18 @@
 import socket
-
+from arrow import utcnow
 import logging
+import requests
+
 from asciimatics.widgets import MultiColumnListBox, Widget
 
 from Project.config import SW_VERSION, SERVICE_LOGGER
-from arrow import utcnow
 
-from SnifferAPI.Devices import Device
+
 
 
 class Client():
     def __init__(self,):
-        self.IP, self.host = self.get_connection_information()
+        self.local_IP, self.public_IP, self.host = self.get_connection_information()
         self.firmware_version = None
         self.software_version = SW_VERSION
         self.port = None
@@ -30,12 +31,18 @@ class Client():
         return self
 
     def get_connection_information(self):
-        testIP = "8.8.8.8"
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect((testIP, 0))
-        ipaddr = s.getsockname()[0]
         host = socket.gethostname()
-        return ipaddr, host
+        public_IP = None
+        local_IP = None
+        try:
+            testIP = "8.8.8.8"
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect((testIP, 0))
+            local_IP = s.getsockname()[0]
+            public_IP = requests.get('https://api.ipify.org').text
+        except: #No network
+            pass
+        return local_IP, public_IP, host
 
     def get_client_info(self):
         client_options = []
