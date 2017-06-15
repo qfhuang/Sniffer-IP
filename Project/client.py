@@ -17,7 +17,7 @@ class Client():
         self.port = None
         self.missed_packets = None
         self.online_since = str(utcnow())
-        self.is_active = True
+        self.is_active = False
 
     def to_JSON(self):
         data  = self.__dict__.copy()

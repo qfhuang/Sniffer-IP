@@ -124,18 +124,18 @@ class MainView(Frame):
         starttime = time.time()
         try:
             if mySniffer == None or client.port == None:
-                if not setup(config.SETUP_DELAY):
                     if client.is_active:
                         logger.warning("Client is inactive")
-                    client.is_active = False
+                        queue.put(item=("Retry Setup", ""))
+                        client.is_active = False
                     self.update_client_info()
                     self._screen.force_update()
-                    time.sleep(60)
                     return
 
             if not client.is_active:
                 if not client.is_active:
                     logger.info("Client is active")
+                    queue.put(item=("Setup Success", ""))
                 client.is_active = True
                 self.update_client_info()
                 self._screen.force_update()
@@ -285,7 +285,7 @@ class FollowView(Frame):
             raise StopApplication("User pressed quit")
 
 
-def setup(delay):
+def setup(delay=config.SETUP_DELAY):
     global mySniffer, client
 
     logger = logging.getLogger(config.SERVICE_LOGGER)
@@ -329,6 +329,16 @@ def setup(delay):
 def demo(screen, scene):
     global client, followed_device, queue
 
+    client = Client()
+    initialize_service_logging(client=client)
+
+    sched = BackgroundScheduler(daemon=True, logger=logging.getLogger(config.SCHEDULER_LOGGER))
+    sched.start()
+    sched.add_job(client.send_client_status, 'interval', seconds=config.SEND_CLIENT_STATUS_INTERVAL, max_instances=1,
+                  id="status")
+
+    setup_sched = BackgroundScheduler(daemon=True, logger=logging.getLogger(config.SCHEDULER_LOGGER))
+
     main_scene = MainView(screen)
     scenes = [
         Scene([main_scene], -1, name="Main"),
@@ -338,8 +348,17 @@ def demo(screen, scene):
     screen.set_scenes(scenes, start_scene=scene)
 
     prev_index = None
+
+    if not setup_sched.running:
+        setup_sched.start()
+    setup_sched.add_job(setup, 'interval', seconds=config.SETUP_DELAY * 4, max_instances=1,
+                        id="setup", replace_existing=True,
+                        next_run_time=datetime.now())
+    start_time = time.time()
+
     while True:
         curr_index = screen._scene_index
+
         if not queue.empty():
             item_type, item = queue.get()
 
@@ -355,16 +374,24 @@ def demo(screen, scene):
                             screen._scene_index = i
                             break
 
+            if item_type == "Retry Setup" and time.time() - start_time > config.SETUP_RETRY:
+                if not setup_sched.running:
+                    setup_sched.start()
+                setup_sched.add_job(setup, 'interval', seconds=config.SETUP_DELAY * 4, max_instances=1,
+                                    id="scanning", replace_existing=True,
+                                    next_run_time=datetime.now())
 
-        screen.draw_next_frame(repeat=True)
+            if item_type == "Setup Success":
+                setup_sched.remove_all_jobs()
 
         if curr_index != prev_index:
             if prev_index != None:
                 screen._scenes[prev_index].effects[0].stop_service()
-            time.sleep(0.2)
-            screen._scenes[curr_index].effects[0].start_service()
+            if client.is_active:
+                screen._scenes[curr_index].effects[0].start_service()
 
         prev_index = curr_index
+        screen.draw_next_frame(repeat=True)
         time.sleep(0.05)
 
 
@@ -378,11 +405,6 @@ def demo(screen, scene):
 def main():
     logger = logging.getLogger(config.SERVICE_LOGGER)
     global client, last_scene
-    client = Client()
-    initialize_service_logging(client=client)
-    sched = BackgroundScheduler(daemon=True, logger=logging.getLogger(config.SCHEDULER_LOGGER))
-    sched.start()
-    sched.add_job(client.send_client_status, 'interval', seconds=config.SEND_CLIENT_STATUS_INTERVAL, max_instances=1, id="status")
     while True:
         try:
             Screen.wrapper(demo, catch_interrupt=True, arguments=[last_scene])

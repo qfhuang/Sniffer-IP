@@ -12,6 +12,7 @@ SAVE_TO_PCAP = False
 SAVE_TO_FILEBEAT = True
 
 SETUP_DELAY = 6 #in sec
+SETUP_RETRY = 30 #in sec
 SEND_CLIENT_STATUS_INTERVAL = 60*5 #in sec
 
 #Logging Packets Settings
