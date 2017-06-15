@@ -28,6 +28,12 @@ last_scene = None
 queue = Queue()
 initialize_scheduler_logging()
 
+class DevNull:
+    def write(self, msg):
+        pass
+
+sys.stderr = DevNull()
+
 class MainView(Frame):
     def __init__(self, screen):
         super(MainView, self).__init__(screen,
