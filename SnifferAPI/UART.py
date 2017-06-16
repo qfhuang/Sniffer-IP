@@ -13,7 +13,7 @@ class Uart:
                         bytesize    = serial.EIGHTBITS,
                         parity      = serial.PARITY_NONE,
                         stopbits    = serial.STOPBITS_ONE,
-                        timeout     = 3, #seconds
+                        timeout     = None, #seconds
                         writeTimeout= None,
                         rtscts         = True 
                         ) 
