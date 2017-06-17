@@ -6,6 +6,7 @@ from pythonjsonlogger import jsonlogger
 
 from Project.config import *
 
+
 class CustomJsonFormatter(jsonlogger.JsonFormatter):
 
     def process_log_record(self, log_record):
@@ -46,7 +47,6 @@ def initialize_service_logging(client):
     logger = logging.getLogger(SERVICE_LOGGER)
     logger.addFilter(ServiceFilter(client))
     logger.setLevel(SERVICE_LOG_LEVEL)
-    stream_handler = logging.StreamHandler(stream=None)
     handler = logging.handlers.TimedRotatingFileHandler(log_file,
                                        when=SERVICE_LOG_FILE_TIME_BASE,
                                        interval=1,

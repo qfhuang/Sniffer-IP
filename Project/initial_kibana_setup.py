@@ -3,7 +3,7 @@ import json
 import requests
 
 #Delete old documents
-requests.delete('http://93.103.95.81:9200/.kibana')
+print (requests.delete('http://93.103.95.81:9200/filebeat*').text)
 
 
 #Pipeline setup

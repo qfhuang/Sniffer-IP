@@ -8,8 +8,6 @@ from asciimatics.widgets import MultiColumnListBox, Widget
 from Project.config import SW_VERSION, SERVICE_LOGGER
 
 
-
-
 class Client():
     def __init__(self,):
         self.local_IP, self.public_IP, self.host = self.get_connection_information()
