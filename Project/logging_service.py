@@ -1,9 +1,17 @@
 import os
 import logging
 
+import arrow
 from pythonjsonlogger import jsonlogger
 
 from Project.config import *
+
+class CustomJsonFormatter(jsonlogger.JsonFormatter):
+
+    def process_log_record(self, log_record):
+        del(log_record['asctime'])
+        log_record["timestamp"] = arrow.utcnow()
+        return jsonlogger.JsonFormatter.process_log_record(self, log_record)
 
 
 class ServiceFilter(logging.Filter):
@@ -45,7 +53,7 @@ def initialize_service_logging(client):
                                        backupCount=SERVICE_CLEAN_UP_INTERVAL,
                                        utc=True)
     format_str = '%(message)%(levelname)%(name)%(asctime)%(client)'
-    formatter = jsonlogger.JsonFormatter(format_str, '%Y-%m-%dT%H:%M:%S')
+    formatter = CustomJsonFormatter(format_str, '%Y-%m-%dT%H:%M:%S')
     handler.setFormatter(formatter)
 
     stream_handler = logging.StreamHandler(stream=None)
@@ -68,7 +76,7 @@ def initialize_scheduler_logging():
                                                         backupCount=SCHEDULER_LOG_CLEAN_UP_INTERVAL,
                                                         utc=True)
     format_str = '%(message)%(levelname)%(name)%(asctime)'
-    formatter = jsonlogger.JsonFormatter(format_str, '%Y-%m-%dT%H:%M:%S')
+    formatter = CustomJsonFormatter(format_str, '%Y-%m-%dT%H:%M:%S')
     handler.setFormatter(formatter)
 
     stream_handler = logging.StreamHandler(stream=None)
