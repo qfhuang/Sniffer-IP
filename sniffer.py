@@ -407,9 +407,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-
-
-
-#C:\Users\blazb\AppData\Local\Programs\Python\Python36\python.exe
-
