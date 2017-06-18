@@ -32,7 +32,7 @@ class DevNull:
     def write(self, msg):
         pass
 
-sys.stderr = DevNull()
+if not config.DEBUG: sys.stderr = DevNull()
 
 class MainView(Frame):
     def __init__(self, screen):

@@ -40,7 +40,7 @@ def initialize_packets_logging_to_Filebeat():
 
     logger.addHandler(handler)
     logger.addHandler(stream_handler)
-    logger.propagate = False
+    logger.propagate = DEBUG
 
 def initialize_service_logging(client):
     log_file = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "Logs", SERVICE_LOG_FILE_NAME)
@@ -62,7 +62,7 @@ def initialize_service_logging(client):
 
     logger.addHandler(handler)
     logger.addHandler(stream_handler)
-    logger.propagate = False
+    logger.propagate = DEBUG
 
 
 def initialize_scheduler_logging():
@@ -81,8 +81,8 @@ def initialize_scheduler_logging():
 
     stream_handler = logging.StreamHandler(stream=None)
     stream_handler.setFormatter(formatter)
-    stream_handler.setLevel(logging.CRITICAL)
+    stream_handler.setLevel(logging.DEBUG) if DEBUG else stream_handler.setLevel(logging.ERROR)
 
     logger.addHandler(handler)
     logger.addHandler(stream_handler)
-    logger.propagate = False
+    logger.propagate = DEBUG
