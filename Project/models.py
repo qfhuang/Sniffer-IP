@@ -15,12 +15,16 @@ class BLEPacket():
         self.RSSI = packet.RSSI
         self.channel = packet.channel
         self.direction = get_direction(packet.direction)
-        self.headerLength = packet.headerLength
+        self.headerLength = packet.bleHeaderLength
         self.payloadLength = packet.payloadLength
         self.header = packet.packetList[:6]
+        self.isEncrypted = packet.encrypted
         self.header = packet.payload
         self.CRC = packet.crcOK
         self._blePacket = packet.blePacket
+
+        if self.isEncrypted:
+            self.integrityCheckOK = packet.micOK
 
         if self._blePacket:
             self.address = self._get_address(self._blePacket.advAddress)
