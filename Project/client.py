@@ -15,7 +15,7 @@ class Client():
         self.software_version = SW_VERSION
         self.port = None
         self.missed_packets = None
-        self.online_since = utcnow()
+        self.online_since = str(utcnow())
         self.is_active = True
 
     def to_JSON(self):
