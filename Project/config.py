@@ -8,7 +8,7 @@ SNIFFER_PORT_KEYWORD_SEARCH = "USB"
 if sys.platform == 'win32':
     SNIFFER_PORT_KEYWORD_SEARCH = "Serial"
 
-DEBUG = True
+DEBUG = False
 SAVE_TO_PCAP = False
 SAVE_TO_FILEBEAT = True
 

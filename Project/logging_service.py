@@ -26,7 +26,7 @@ class ServiceFilter(logging.Filter):
 
 
 def initialize_packets_logging_to_Filebeat():
-    log_file = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "Logs", PACKETS_LOG_FILE_NAME)
+    log_file = os.path.join("Logs", PACKETS_LOG_FILE_NAME)
     logger = logging.getLogger(BLE_PACKETS_LOGGER)
     logger.setLevel(PACKETS_LOG_LEVEL)
     handler = logging.handlers.TimedRotatingFileHandler(log_file,
@@ -43,7 +43,7 @@ def initialize_packets_logging_to_Filebeat():
     logger.propagate = DEBUG
 
 def initialize_service_logging(client):
-    log_file = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "Logs", SERVICE_LOG_FILE_NAME)
+    log_file = os.path.join("Logs", SERVICE_LOG_FILE_NAME)
     logger = logging.getLogger(SERVICE_LOGGER)
     logger.addFilter(ServiceFilter(client))
     logger.setLevel(SERVICE_LOG_LEVEL)
@@ -66,7 +66,7 @@ def initialize_service_logging(client):
 
 
 def initialize_scheduler_logging():
-    log_file = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "Logs", SCHEDULER_LOG_FILE_NAME)
+    log_file = os.path.join("Logs", SCHEDULER_LOG_FILE_NAME)
     logger = logging.getLogger(SCHEDULER_LOGGER)
     logger.setLevel(SCHEDULER_LOG_LEVEL)
 
