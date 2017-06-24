@@ -79,12 +79,14 @@ class MainView(Frame):
         self.sched = BackgroundScheduler(daemon=True, logger=logging.getLogger(config.SCHEDULER_LOGGER))
 
     def start_service(self):
+        global client
         if not self.sched.running:
             self.sched.start()
         self.sched.add_job(self.run, 'interval', seconds=config.UPDATE_SCREEN_INTERVAL, max_instances=1, id="scanning",
                            next_run_time=datetime.now())
         logger = logging.getLogger(config.SERVICE_LOGGER)
-        logger.info("Started scanning")
+        if client.is_active:
+            logger.info("Started scanning")
 
     def stop_service(self):
         self.sched.remove_all_jobs()
@@ -331,8 +333,6 @@ def setup(delay=config.SETUP_DELAY):
 
 def demo(screen, scene):
     global client
-    client = Client()
-    initialize_service_logging(client=client)
     sched = BackgroundScheduler(daemon=True, logger=logging.getLogger(config.SCHEDULER_LOGGER))
     sched.start()
     sched.add_job(client.send_client_status, 'interval', seconds=config.SEND_CLIENT_STATUS_INTERVAL, max_instances=1,
@@ -347,54 +347,57 @@ def demo(screen, scene):
     screen.set_scenes(scenes, start_scene=scene)
 
     prev_index = None
-    try:
-        while True:
-            curr_index = screen._scene_index
-            if not queue.empty():
-                item_type, item = queue.get()
 
-                if item_type == "Change scene":
-                    curr_scene = screen._scenes[curr_index]
-                    try:
-                        raise item
-                    except NextScene as e:
-                        curr_scene.exit()
+    while True:
+        curr_index = screen._scene_index
+        if not queue.empty():
+            item_type, item = queue.get()
 
-                        for i, scene in enumerate(screen._scenes):
-                            if curr_scene.name == e.name:
-                                screen._scene_index = i
-                                break
-                elif item_type == "Update Client":
-                    client.update_client_with_sniffer(item)
-                elif item_type == "Error":
-                    client = Client()
-                elif item_type == "Client Inactive":
-                    client.is_active = False
-                elif item_type == "Client Active":
-                    client.is_active = True
+            if item_type == "Change scene":
+                curr_scene = screen._scenes[curr_index]
+                try:
+                    raise item
+                except NextScene as e:
+                    curr_scene.exit()
 
-            if curr_index != prev_index:
-                if prev_index != None:
-                    screen._scenes[prev_index].effects[0].stop_service()
-                screen._scenes[curr_index].effects[0].start_service()
+                    for i, scene in enumerate(screen._scenes):
+                        if curr_scene.name == e.name:
+                            screen._scene_index = i
+                            break
+            elif item_type == "Update Client":
+                client.update_client_with_sniffer(item)
+            elif item_type == "Error":
+                client = Client()
+            elif item_type == "Client Inactive":
+                client.is_active = False
+            elif item_type == "Client Active":
+                client.is_active = True
 
-            prev_index = curr_index
-            screen.draw_next_frame(repeat=True)
-            if screen.has_resized():
-                screen._scenes[screen._scene_index].exit()
-                raise ResizeScreenError("Screen resized",
-                               screen._scenes[screen._scene_index])
+        if curr_index != prev_index:
+            if prev_index != None:
+                screen._scenes[prev_index].effects[0].stop_service()
+            screen._scenes[curr_index].effects[0].start_service()
 
-            time.sleep(0.05)
+        prev_index = curr_index
+        screen.draw_next_frame(repeat=True)
+        if screen.has_resized():
+            screen._scenes[screen._scene_index].exit()
+            raise ResizeScreenError("Screen resized",
+                           screen._scenes[screen._scene_index])
 
-    except StopApplication:
-        return
+        time.sleep(0.05)
 
 
 
 def main():
+    global client, last_scene
+
+    client = Client()
+    initialize_service_logging(client=client)
     logger = logging.getLogger(config.SERVICE_LOGGER)
-    global last_scene
+    if config.SAVE_TO_FILEBEAT:
+        initialize_packets_logging_to_Filebeat()
+
     while True:
         try:
             Screen.wrapper(demo, catch_interrupt=False, arguments=[last_scene])
@@ -414,5 +417,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-#C:\Users\blazb\AppData\Local\Programs\Python\Python36\python
