@@ -347,55 +347,62 @@ def demo(screen, scene):
     screen.set_scenes(scenes, start_scene=scene)
 
     prev_index = None
-    while True:
-        curr_index = screen._scene_index
-        if not queue.empty():
-            item_type, item = queue.get()
+    try:
+        while True:
+            curr_index = screen._scene_index
+            if not queue.empty():
+                item_type, item = queue.get()
 
-            if item_type == "Change scene":
-                curr_scene = screen._scenes[curr_index]
-                try:
-                    raise item
-                except NextScene as e:
-                    curr_scene.exit()
+                if item_type == "Change scene":
+                    curr_scene = screen._scenes[curr_index]
+                    try:
+                        raise item
+                    except NextScene as e:
+                        curr_scene.exit()
 
-                    for i, scene in enumerate(screen._scenes):
-                        if curr_scene.name == e.name:
-                            screen._scene_index = i
-                            break
-            elif item_type == "Update Client":
-                client.update_client_with_sniffer(item)
-            elif item_type == "Error":
-                client = Client()
-            elif item_type == "Client Inactive":
-                client.is_active = False
-            elif item_type == "Client Active":
-                client.is_active = True
+                        for i, scene in enumerate(screen._scenes):
+                            if curr_scene.name == e.name:
+                                screen._scene_index = i
+                                break
+                elif item_type == "Update Client":
+                    client.update_client_with_sniffer(item)
+                elif item_type == "Error":
+                    client = Client()
+                elif item_type == "Client Inactive":
+                    client.is_active = False
+                elif item_type == "Client Active":
+                    client.is_active = True
 
-        if curr_index != prev_index:
-            if prev_index != None:
-                screen._scenes[prev_index].effects[0].stop_service()
-            screen._scenes[curr_index].effects[0].start_service()
+            if curr_index != prev_index:
+                if prev_index != None:
+                    screen._scenes[prev_index].effects[0].stop_service()
+                screen._scenes[curr_index].effects[0].start_service()
 
-        prev_index = curr_index
-        screen.draw_next_frame(repeat=True)
-        time.sleep(0.05)
+            prev_index = curr_index
+            screen.draw_next_frame(repeat=True)
+            if screen.has_resized():
+                screen._scenes[screen._scene_index].exit()
+                raise ResizeScreenError("Screen resized",
+                               screen._scenes[screen._scene_index])
 
+            time.sleep(0.05)
 
-        #TODO: Screen resizing
-        #if screen.has_resized():
-            #screen._scenes[screen._scene_index].exit()
-            #raise ResizeScreenError("Screen resized",
-            #                    screen._scenes[screen._scene_index])
+    except StopApplication:
+        return
+
 
 
 def main():
     logger = logging.getLogger(config.SERVICE_LOGGER)
+    global last_scene
     while True:
         try:
             Screen.wrapper(demo, catch_interrupt=False, arguments=[last_scene])
             if mySniffer: mySniffer.doExit()
             sys.exit(-1)
+        except ResizeScreenError as e:
+            logger.info("Screen has resize")
+            last_scene = e.scene
         except StopApplication:
             logger.info("Application Exit (user pressed Quit)")
             if mySniffer: mySniffer.doExit()
@@ -407,3 +414,5 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+#C:\Users\blazb\AppData\Local\Programs\Python\Python36\python
