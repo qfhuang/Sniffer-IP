@@ -23,7 +23,7 @@ from Project.logging_service import initialize_service_logging, initialize_sched
 
 mySniffer = None
 followed_device = None
-client = None
+client = Client()
 last_scene = None
 queue = Queue()
 initialize_scheduler_logging()
@@ -122,7 +122,7 @@ class MainView(Frame):
         self._client_info_view.options = client.get_client_info()
 
     def run(self):
-        global mySniffer, queue, client
+        global mySniffer, queue
         logger = logging.getLogger(config.SERVICE_LOGGER)
         starttime = time.time()
         try:
@@ -145,7 +145,7 @@ class MainView(Frame):
                 self._screen.force_update()
 
             if not client.local_IP or client.public_IP:
-                client.local_IP, client.public_IP, client.host = client.get_connection_information()
+                queue.put(item=("Client Reconnect", ""))
 
             mySniffer.scan()
             time.sleep((config.UPDATE_SCREEN_INTERVAL - ((time.time() - starttime) % config.UPDATE_SCREEN_INTERVAL)) -1)
@@ -255,7 +255,7 @@ class FollowView(Frame):
         self._client_info_view.options = client.get_client_info()
 
     def run(self):
-        global mySniffer, queue, client
+        global mySniffer, queue
         starttime = time.time()
         try:
             if mySniffer == None or client.port == None or followed_device == None:
@@ -265,7 +265,7 @@ class FollowView(Frame):
                 mySniffer.follow(self._device)
 
             if not client.local_IP or client.public_IP:
-                client.local_IP, client.public_IP, client.host = client.get_connection_information()
+                queue.put(item=("Client Reconnect", ""))
 
             self._packets = mySniffer.getPackets()
             time.sleep((config.UPDATE_SCREEN_INTERVAL - ((time.time() - starttime) % config.UPDATE_SCREEN_INTERVAL)) - 0.5)
@@ -370,8 +370,11 @@ def demo(screen, scene):
                         if curr_scene.name == e.name:
                             screen._scene_index = i
                             break
+
             elif item_type == "Update Client":
                 client.update_client_with_sniffer(item)
+            elif item_type == "Client Reconnect":
+                client.local_IP, client.public_IP, client.host = client.get_connection_information()
             elif item_type == "Error":
                 client = Client()
             elif item_type == "Client Inactive":
@@ -396,9 +399,7 @@ def demo(screen, scene):
 
 
 def main():
-    global client, last_scene
-
-    client = Client()
+    global last_scene
     initialize_service_logging(client=client)
     logger = logging.getLogger(config.SERVICE_LOGGER)
     if config.SAVE_TO_FILEBEAT:
