@@ -122,7 +122,7 @@ class MainView(Frame):
         self._client_info_view.options = client.get_client_info()
 
     def run(self):
-        global mySniffer, queue
+        global mySniffer, queue, client
         logger = logging.getLogger(config.SERVICE_LOGGER)
         starttime = time.time()
         try:
@@ -143,6 +143,9 @@ class MainView(Frame):
                 time.sleep(0.1)
                 self.update_client_info()
                 self._screen.force_update()
+
+            if not client.local_IP or client.public_IP:
+                client.local_IP, client.public_IP, client.host = client.get_connection_information()
 
             mySniffer.scan()
             time.sleep((config.UPDATE_SCREEN_INTERVAL - ((time.time() - starttime) % config.UPDATE_SCREEN_INTERVAL)) -1)
@@ -252,7 +255,7 @@ class FollowView(Frame):
         self._client_info_view.options = client.get_client_info()
 
     def run(self):
-        global mySniffer, queue
+        global mySniffer, queue, client
         starttime = time.time()
         try:
             if mySniffer == None or client.port == None or followed_device == None:
@@ -260,6 +263,9 @@ class FollowView(Frame):
 
             if mySniffer.state != 1:
                 mySniffer.follow(self._device)
+
+            if not client.local_IP or client.public_IP:
+                client.local_IP, client.public_IP, client.host = client.get_connection_information()
 
             self._packets = mySniffer.getPackets()
             time.sleep((config.UPDATE_SCREEN_INTERVAL - ((time.time() - starttime) % config.UPDATE_SCREEN_INTERVAL)) - 0.5)
