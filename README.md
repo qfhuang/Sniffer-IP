@@ -125,4 +125,13 @@ sudo service filebeat start
 Konfiguracija metricbeat-a je podobna, spremeniti je potrebno le yml 
 datoteko več na: https://www.elastic.co/guide/en/beats/metricbeat/current/metricbeat-installation.html
 
+## Zgrajeno s pomočjo
+* [Adafruit Sniffer API](https://github.com/adafruit/Adafruit_BLESniffer_Python) - Python API
+* [Elasticsearch](https://github.com/adafruit/Adafruit_BLESniffer_Python) - Search engine/Podatkovna baza + Filebeat, Metricbeat
 
+## Sodelujoči
+
+* **Blaž Bider** - *Razvoj projekta* 
+* **Matevž Pustišek** - *Mentor*
+* **Luka Mali** - *Mentor* 
+* **Andrej Kos** - *Nosilec predmeta* 
