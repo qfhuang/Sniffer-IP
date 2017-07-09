@@ -1,6 +1,11 @@
 import sys
 from logging import INFO, ERROR
 
+ELASTIC_DOMAIN_NAME = "blesniffer.ddns.net"
+ELASTIC_USERNAME = "elastic"
+ELASTIC_PASSWORD = "blesnifferpw"
+
+
 SW_VERSION = "1.1-beta"
 
 SNIFFER_PORT_KEYWORD_SEARCH = "USB"

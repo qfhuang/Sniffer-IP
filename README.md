@@ -20,7 +20,7 @@ cd Sniffer-IP
 pip install -r requirements.txt
 ```
 
-###Namestitev programa kot service na RPi-ju:
+### Namestitev programa kot service na RPi-ju:
 1.) Napiši shell skripto za zagon aplikacije npr. `launcher.sh`, ki se nahaja v direktoriju `Sniffer-IP`.
 ```
 sudo nano launcher.sh
@@ -49,7 +49,8 @@ sudo su - pi -c "sudo screen -dm -S sniffer_screen sudo sh /home/pi/Documents/Sn
 Nameščanje beatov je podobno, tukaj predpostavim da nameščamo filebeat. Če nameščamo beate na Windows, OSX, Linux je 
 dosegljiv postopek na https://www.elastic.co/guide/en/beats/filebeat/current/filebeat-installation.html . Če pa želimo 
 beate na ARM procesorjih (RPi) sledimo spodnjim navodilom. V obeh primerih je potrebno
-nastaviti `filebeat.yml` datoteko.
+nastaviti `filebeat.yml` datoteko. Na vseh platformah samo v primeru filebeata je potrebno določiti še template to narediš tako,
+da kopiraš datoteko `filebeat.template.json` iz izvornega direktorja `Sniffer-IP` v direktorij filebeata.
 
 #### Namestitev filebeat-a na RPi-ju
 Pojdi na naslov https://beats-nightlies.s3.amazonaws.com/index.html?prefix=jenkins/ in izberi zadnjo verzijo filebeata z imenom
@@ -81,17 +82,18 @@ filebeat.prospectors:
 #-------------------------- Elasticsearch output ------------------------------
 
 output.elasticsearch:
-  hosts: ["93.103.95.81:9200"]
+  hosts: ["https://blesniffer.ddns.net:9200"]
   template.name: "filebeat"
   template.path: "filebeat.template.json"
   template.overwrite: false
 
   # Optional protocol and basic auth credentials.
-  #protocol: "https"
-  #username: "elastic"
-  #password: "changeme"
+  protocol: "https"
+  username: "elastic"
+  password: "blesnifferpw"
 ```
-V primeru Windows platforme spremenimo poti logov v npr. `- C:\My documents\Sniffer-IP\Logs\scheduler*.log`
+V primeru Windows platforme spremenimo poti logov v npr. `- C:\My documents\Sniffer-IP\Logs\scheduler*.log`. Pri hosts uporabimo
+naslov IP ali domeno elasticsearcha.
 
 #### Filebeat kot service na RPi-ju
 Filebeat želimo zagnati ob vsakem bootu, zato ga dodamo v sistemski service.
